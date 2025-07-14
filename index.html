@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Gatwick Runway Highlighted Flight - No Loading Text</title>
+<title>Gatwick Runway Highlighted Flight - Animated</title>
 <style>
   body {
     margin: 0; 
@@ -22,11 +22,13 @@
     max-width: 90vw;
     font-size: 1.5rem;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-
-    transform: translateY(0);
     opacity: 1;
-
-    transition: transform 0.4s ease, opacity 0.4s ease;
+    transform: translateY(0);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  #flight-box.hidden {
+    opacity: 0;
+    transform: translateY(30px);
   }
 </style>
 </head>
@@ -34,12 +36,11 @@
   <div id="flight-box"></div>
 
 <script>
-  // Polygon of runway corners (lat, lon)
   const runwayPolygon = [
-    {lat: 51.1518258, lon: -0.1660981}, // A
-    {lat: 51.1511402, lon: -0.1658671}, // B
-    {lat: 51.1447597, lon: -0.2121570}, // C
-    {lat: 51.1454248, lon: -0.2123059}  // D
+    {lat: 51.1518258, lon: -0.1660981},
+    {lat: 51.1511402, lon: -0.1658671},
+    {lat: 51.1447597, lon: -0.2121570},
+    {lat: 51.1454248, lon: -0.2123059}
   ];
 
   const GATWICK_LAT = 51.1537;
@@ -63,7 +64,6 @@
     for(let i = 0, j = polygon.length -1; i < polygon.length; j = i++) {
       const xi = polygon[i].lon, yi = polygon[i].lat;
       const xj = polygon[j].lon, yj = polygon[j].lat;
-
       const intersect = ((yi > point.lat) != (yj > point.lat)) &&
                         (point.lon < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
       if (intersect) inside = !inside;
@@ -72,10 +72,11 @@
   }
 
   const box = document.getElementById('flight-box');
+  let currentText = '';
 
   async function fetchHighlightedFlight() {
-    // Clear text immediately (no loading text)
-    box.textContent = '';
+    // Animate out
+    box.classList.add('hidden');
 
     try {
       const res = await fetch("https://data.vatsim.net/v3/vatsim-data.json");
@@ -92,7 +93,7 @@
       });
 
       if (flights.length === 0) {
-        box.textContent = "No Gatwick traffic currently.";
+        updateText("No Gatwick traffic currently.");
         return;
       }
 
@@ -103,7 +104,7 @@
       const planesOnRunway = flights.filter(f => pointInPolygon({lat: f.latitude, lon: f.longitude}, runwayPolygon));
 
       if (planesOnRunway.length === 0) {
-        box.textContent = "No plane currently on runway.";
+        updateText("No plane currently on runway.");
         return;
       }
 
@@ -120,11 +121,25 @@
         ? `${runwayPlane.callsign} inbound to Gatwick from ${fp.departure} — Aircraft: ${aircraft} — Pilot: ${pilotName}`
         : `${runwayPlane.callsign} outbound from Gatwick to ${fp.arrival} — Aircraft: ${aircraft} — Pilot: ${pilotName}`;
 
-      box.textContent = text;
+      updateText(text);
     } catch (e) {
-      box.textContent = "Error fetching data.";
+      updateText("Error fetching data.");
       console.error(e);
     }
+  }
+
+  function updateText(newText) {
+    if (newText === currentText) {
+      // No change, just fade back in
+      box.classList.remove('hidden');
+      return;
+    }
+    // Wait for fade-out transition (400ms)
+    setTimeout(() => {
+      box.textContent = newText;
+      currentText = newText;
+      box.classList.remove('hidden');
+    }, 400);
   }
 
   fetchHighlightedFlight();
@@ -132,3 +147,4 @@
 </script>
 </body>
 </html>
+
