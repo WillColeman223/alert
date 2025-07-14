@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Gatwick Info Bar – VATSIM METAR Temp</title>
+<title>Gatwick Info Bar – METAR Only</title>
 <style>
   body {
     margin: 0;
-    background: #00FF00; /* chroma key */
+    background: #00FF00; /* chroma key green screen */
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   }
   .infobar {
@@ -42,7 +42,7 @@
   <div class="cell" id="temp">--°C</div>
   <div class="cell" id="callsign">Loading...</div>
   <div class="cell" id="aircraft">--</div>
-  <div class="cell" id="reg">--</div>
+  <div class="cell" id="pilot">--</div>
   <div class="cell" id="route">-- ➔ --</div>
 </div>
 
@@ -52,7 +52,7 @@
     temp: document.getElementById('temp'),
     callsign: document.getElementById('callsign'),
     aircraft: document.getElementById('aircraft'),
-    reg: document.getElementById('reg'),
+    pilot: document.getElementById('pilot'),
     route: document.getElementById('route')
   };
 
@@ -81,42 +81,36 @@
     return inside;
   }
 
-  async function update() {
-    // Time
-    const now = new Date();
-    el.time.textContent = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  // Update time every second
+  setInterval(()=>{
+    const now=new Date();
+    el.time.textContent = now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  },1000);
 
-    // METAR temperature
+  // Update METAR every 2 minutes
+  async function updateMETAR(){
     try {
       const res = await fetch('https://metar.vatsim.net/EGKK.txt');
       const text = await res.text();
-      console.log("METAR text:", text);
-
-      // Split by space and find NN/NN or MNN/MNN
       const parts = text.split(/\s+/);
-      console.log("METAR parts:", parts);
-
-      let temp = null;
+      let temp = '--';
       for (const part of parts) {
-        const match = part.match(/^(M?\d{1,2})\/(M?\d{1,2})$/);
-        if (match) {
-          temp = match[1].replace('M', '-');
+        if (part.includes('/')) {
+          const t = part.split('/')[0];
+          temp = t.startsWith('M') ? '-' + t.substring(1) : t;
           break;
         }
       }
-      console.log("Parsed temperature:", temp);
-
-      if (temp !== null) {
-        el.temp.textContent = `${temp}°C`;
-      } else {
-        el.temp.textContent = '--°C';
-      }
-    } catch(e) {
-      console.error("Error fetching METAR:", e);
+      el.temp.textContent = `${temp}°C`;
+    } catch {
       el.temp.textContent = '--°C';
     }
+  }
+  updateMETAR();
+  setInterval(updateMETAR,120000);
 
-    // VATSIM flight data
+  // Update VATSIM every 5 seconds
+  async function updateFlights(){
     try {
       const data = await fetch('https://data.vatsim.net/v3/vatsim-data.json').then(r=>r.json());
       const flights = data.pilots.filter(p=>{
@@ -130,22 +124,23 @@
         const fp=p.flight_plan;
         el.callsign.textContent = p.callsign;
         el.aircraft.textContent = fp.aircraft.split(/[\/\s]/)[0];
-        el.reg.textContent = p.registration||'--';
+        el.pilot.textContent = p.name || '--';
         el.route.textContent = fp.arrival==='EGKK' ? `${fp.departure} ➔ EGKK` : `EGKK ➔ ${fp.arrival}`;
       } else {
         el.callsign.textContent='No runway traffic';
         el.aircraft.textContent='--';
-        el.reg.textContent='--';
+        el.pilot.textContent='--';
         el.route.textContent='-- ➔ --';
       }
-    } catch(e) {
-      console.error("Error fetching VATSIM data:", e);
+    } catch {
       el.callsign.textContent='Flight error';
+      el.aircraft.textContent='--';
+      el.pilot.textContent='--';
+      el.route.textContent='-- ➔ --';
     }
   }
-
-  update();
-  setInterval(update, 30000);
+  updateFlights();
+  setInterval(updateFlights,5000);
 </script>
 </body>
 </html>
