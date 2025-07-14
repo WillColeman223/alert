@@ -1,136 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Gatwick Runway Flight – Madeira Spotting Style</title>
-  <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      background: #00FF00; /* chroma-key green */
-      display: flex;
-      justify-content: center;
-      align-items: flex-end;
-      overflow: hidden;
-      font-family: 'Segoe UI', sans-serif;
-    }
-    .box {
-      background: rgba(0, 0, 0, 0.75);
-      color: #fff;
-      padding: 16px 24px;
-      border-radius: 8px 8px 0 0;
-      width: 100%;
-      max-width: 600px;
-      box-shadow: 0 -4px 12px rgba(0,0,0,0.5);
-    }
-    .callsign {
-      font-size: 1.8rem;
-      font-weight: bold;
-      color: #00E5FF;
-      margin-bottom: 4px;
-    }
-    .info {
-      font-size: 1rem;
-      margin: 2px 0;
-      line-height: 1.3;
-    }
-    .weather {
-      font-size: 0.9rem;
-      margin-top: 8px;
-      color: #B0BEC5;
-      border-top: 1px solid rgba(255,255,255,0.2);
-      padding-top: 8px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Gatwick Runway Info Bar</title>
+<style>
+  body {
+    margin: 0;
+    background: #00FF00; /* chroma key */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  .infobar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1e2a38; /* dark blue-gray */
+    color: #ffffff;
+    padding: 10px 20px;
+    font-size: 1rem;
+  }
+  .cell {
+    flex: 1;
+    text-align: center;
+    border-left: 1px solid rgba(255,255,255,0.2);
+    padding: 4px 8px;
+  }
+  .cell:first-child {
+    border-left: none;
+    text-align: left;
+    font-weight: bold;
+  }
+</style>
 </head>
 <body>
-  <div class="box" id="overlay">
-    <div class="callsign" id="callsign"></div>
-    <div class="info" id="route"></div>
-    <div class="info" id="aircraft"></div>
-    <div class="info" id="pilot"></div>
-    <div class="info" id="distance"></div>
-    <div class="weather" id="weather"></div>
-  </div>
+<div class="infobar">
+  <div class="cell" id="airport">EGKK</div>
+  <div class="cell" id="time">--:--</div>
+  <div class="cell" id="temp">--°C</div>
+  <div class="cell" id="callsign">Loading...</div>
+  <div class="cell" id="aircraft">--</div>
+  <div class="cell" id="reg">--</div>
+  <div class="cell" id="route">-- ➔ --</div>
+</div>
 
 <script>
-  const runway = [
-    {lat: 51.1518258, lon: -0.1660981},
-    {lat: 51.1511402, lon: -0.1658671},
-    {lat: 51.1447597, lon: -0.2121570},
-    {lat: 51.1454248, lon: -0.2123059}
-  ];
-  const G_LAT = 51.1537, G_LON = -0.1821, R = 6371;
-
   const el = {
+    time: document.getElementById('time'),
+    temp: document.getElementById('temp'),
     callsign: document.getElementById('callsign'),
-    route: document.getElementById('route'),
     aircraft: document.getElementById('aircraft'),
-    pilot: document.getElementById('pilot'),
-    distance: document.getElementById('distance'),
-    weather: document.getElementById('weather'),
-    container: document.getElementById('overlay')
+    reg: document.getElementById('reg'),
+    route: document.getElementById('route')
   };
+
+  const runway = [
+    {lat:51.1518258, lon:-0.1660981},
+    {lat:51.1511402, lon:-0.1658671},
+    {lat:51.1447597, lon:-0.2121570},
+    {lat:51.1454248, lon:-0.2123059}
+  ];
+  const GAT_LAT=51.1537, GAT_LON=-0.1821, R=6371;
 
   function toRad(d){return d*Math.PI/180;}
   function hav(lat1,lon1,lat2,lon2){
-    const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
-    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+    const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+    return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   }
   function pip(pt, poly){
-    let inPoly = false;
-    for(let i=0, j=poly.length-1; i<poly.length; j=i++){
-      const xi=poly[i].lon, yi=poly[i].lat;
-      const xj=poly[j].lon, yj=poly[j].lat;
-      const intersect = ((yi>pt.lat)!=(yj>pt.lat)) &&
-                        (pt.lon < (xj-xi)*(pt.lat-yi)/(yj-yi)+xi);
-      if (intersect) inPoly = !inPoly;
+    let inside=false;
+    for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+      const xi=poly[i].lon,yi=poly[i].lat;
+      const xj=poly[j].lon,yj=poly[j].lat;
+      const intersect=((yi>pt.lat)!=(yj>pt.lat))&&(pt.lon<(xj-xi)*(pt.lat-yi)/(yj-yi)+xi);
+      if(intersect)inside=!inside;
     }
-    return inPoly;
+    return inside;
   }
 
-  async function refresh() {
-    try {
-      const d = await fetch("https://data.vatsim.net/v3/vatsim-data.json").then(r=>r.json());
-      const flights = d.pilots.filter(p => {
-        const fp = p.flight_plan;
-        return fp && (fp.arrival==='EGKK' || fp.departure==='EGKK')
-          && typeof p.latitude==='number';
+  async function update(){
+    // Time
+    const now=new Date();
+    el.time.textContent=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+
+    // Weather
+    try{
+      const key='YOUR_OPENWEATHERMAP_API_KEY';
+      const w=await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=51.1537&lon=-0.1821&units=metric&appid=${key}`).then(r=>r.json());
+      el.temp.textContent=`${Math.round(w.main.temp)}°C`;
+    }catch{
+      el.temp.textContent='--°C';
+    }
+
+    // Flight
+    try{
+      const data=await fetch('https://data.vatsim.net/v3/vatsim-data.json').then(r=>r.json());
+      const flights=data.pilots.filter(p=>{
+        const fp=p.flight_plan;
+        return fp&&(fp.arrival==='EGKK'||fp.departure==='EGKK')&&typeof p.latitude==='number';
       });
-      flights.forEach(f => f.d = hav(G_LAT, G_LON, f.latitude, f.longitude));
-      const onRunway = flights.filter(f => pip({lat:f.latitude,lon:f.longitude}, runway));
-      if (onRunway.length) {
-        const p = onRunway.reduce((a,b) => a.d<b.d?a:b);
-        const fp = p.flight_plan;
-        el.callsign.textContent = p.callsign;
-        el.route.textContent = fp.arrival==='EGKK'
-          ? `Inbound from ${fp.departure}`
-          : `Outbound to ${fp.arrival}`;
-        el.aircraft.textContent = `Aircraft: ${fp.aircraft.split(/[\/\s]/)[0]}`;
-        el.pilot.textContent = `Pilot: ${p.name||"Unknown"}`;
-        el.distance.textContent = `Distance: ${p.d.toFixed(1)} km`;
+      flights.forEach(f=>f.d=hav(GAT_LAT,GAT_LON,f.latitude,f.longitude));
+      const runwayFlights=flights.filter(f=>pip({lat:f.latitude,lon:f.longitude},runway));
+      if(runwayFlights.length){
+        const p=runwayFlights[0];
+        const fp=p.flight_plan;
+        el.callsign.textContent=p.callsign;
+        el.aircraft.textContent=fp.aircraft.split(/[\/\s]/)[0];
+        el.reg.textContent=p.registration||"--";
+        el.route.textContent=fp.arrival==='EGKK'?`${fp.departure} ➔ EGKK`:`EGKK ➔ ${fp.arrival}`;
       } else {
-        el.callsign.textContent = "No plane on runway";
-        el.route.textContent = el.aircraft.textContent = el.pilot.textContent = el.distance.textContent = "";
+        el.callsign.textContent='No runway traffic';
+        el.aircraft.textContent='--';
+        el.reg.textContent='--';
+        el.route.textContent='-- ➔ --';
       }
-    } catch {
-      el.callsign.textContent = "Flight data error";
-    }
-
-    // Live weather from OpenWeatherMap
-    try {
-      const key = "YOUR_API_KEY";
-      const w = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=51.1537&lon=-0.1821&units=metric&appid=${key}`)
-        .then(r=>r.json());
-      el.weather.textContent = `Weather: ${w.weather[0].main}, ${Math.round(w.main.temp)}°C`;
-    } catch {
-      el.weather.textContent = "Weather data error";
+    }catch{
+      el.callsign.textContent='Flight error';
     }
   }
 
-  refresh();
-  setInterval(refresh, 30000);
+  update();
+  setInterval(update,30000);
 </script>
 </body>
 </html>
