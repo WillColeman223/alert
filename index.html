@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Gatwick Runway Highlighted Flight - Fast</title>
+<title>Gatwick Runway Highlighted Flight - No Loading Text</title>
 <style>
   body {
     margin: 0; 
@@ -23,17 +23,15 @@
     font-size: 1.5rem;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 
-    /* Start visible and slid up */
     transform: translateY(0);
     opacity: 1;
 
-    /* Faster animation (for future changes if needed) */
     transition: transform 0.4s ease, opacity 0.4s ease;
   }
 </style>
 </head>
 <body>
-  <div id="flight-box">Loading...</div>
+  <div id="flight-box"></div>
 
 <script>
   // Polygon of runway corners (lat, lon)
@@ -76,8 +74,8 @@
   const box = document.getElementById('flight-box');
 
   async function fetchHighlightedFlight() {
-    // Show loading text immediately, but keep box visible
-    box.textContent = 'Loading...';
+    // Clear text immediately (no loading text)
+    box.textContent = '';
 
     try {
       const res = await fetch("https://data.vatsim.net/v3/vatsim-data.json");
