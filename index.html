@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Gatwick Runway Info Bar</title>
+<meta charset="UTF-8" />
+<title>Gatwick Info Bar – VATSIM METAR Temp</title>
 <style>
   body {
     margin: 0;
@@ -10,10 +10,14 @@
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   }
   .infobar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #1e2a38; /* dark blue-gray */
+    background: #1e2a38;
     color: #ffffff;
     padding: 10px 20px;
     font-size: 1rem;
@@ -77,43 +81,48 @@
     return inside;
   }
 
-  async function update(){
+  async function update() {
     // Time
-    const now=new Date();
-    el.time.textContent=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    const now = new Date();
+    el.time.textContent = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
 
-    // Weather
-    try{
-      const key='YOUR_OPENWEATHERMAP_API_KEY';
-      const w=await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=51.1537&lon=-0.1821&units=metric&appid=${key}`).then(r=>r.json());
-      el.temp.textContent=`${Math.round(w.main.temp)}°C`;
-    }catch{
-      el.temp.textContent='--°C';
+    // METAR temperature
+    try {
+      const res = await fetch('https://metar.vatsim.net/EGKK.txt');
+      const text = await res.text();
+      const match = text.match(/ (\d{2})\/\d{2} /);
+      if (match) {
+        el.temp.textContent = `${match[1]}°C`;
+      } else {
+        el.temp.textContent = '--°C';
+      }
+    } catch {
+      el.temp.textContent = '--°C';
     }
 
-    // Flight
-    try{
-      const data=await fetch('https://data.vatsim.net/v3/vatsim-data.json').then(r=>r.json());
-      const flights=data.pilots.filter(p=>{
+    // VATSIM flight
+    try {
+      const data = await fetch('https://data.vatsim.net/v3/vatsim-data.json').then(r=>r.json());
+      const flights = data.pilots.filter(p=>{
         const fp=p.flight_plan;
         return fp&&(fp.arrival==='EGKK'||fp.departure==='EGKK')&&typeof p.latitude==='number';
       });
       flights.forEach(f=>f.d=hav(GAT_LAT,GAT_LON,f.latitude,f.longitude));
-      const runwayFlights=flights.filter(f=>pip({lat:f.latitude,lon:f.longitude},runway));
+      const runwayFlights = flights.filter(f=>pip({lat:f.latitude,lon:f.longitude},runway));
       if(runwayFlights.length){
         const p=runwayFlights[0];
         const fp=p.flight_plan;
-        el.callsign.textContent=p.callsign;
-        el.aircraft.textContent=fp.aircraft.split(/[\/\s]/)[0];
-        el.reg.textContent=p.registration||"--";
-        el.route.textContent=fp.arrival==='EGKK'?`${fp.departure} ➔ EGKK`:`EGKK ➔ ${fp.arrival}`;
+        el.callsign.textContent = p.callsign;
+        el.aircraft.textContent = fp.aircraft.split(/[\/\s]/)[0];
+        el.reg.textContent = p.registration||'--';
+        el.route.textContent = fp.arrival==='EGKK' ? `${fp.departure} ➔ EGKK` : `EGKK ➔ ${fp.arrival}`;
       } else {
         el.callsign.textContent='No runway traffic';
         el.aircraft.textContent='--';
         el.reg.textContent='--';
         el.route.textContent='-- ➔ --';
       }
-    }catch{
+    } catch {
       el.callsign.textContent='Flight error';
     }
   }
