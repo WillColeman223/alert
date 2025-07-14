@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Gatwick Info Bar – METAR Only</title>
+<title>Gatwick Info Bar – Persistent Last Flight</title>
 <style>
   body {
     margin: 0;
@@ -56,12 +56,14 @@
     route: document.getElementById('route')
   };
 
+  // Updated runway coordinates
   const runway = [
-    {lat:51.1518258, lon:-0.1660981},
-    {lat:51.1511402, lon:-0.1658671},
-    {lat:51.1447597, lon:-0.2121570},
-    {lat:51.1454248, lon:-0.2123059}
+    {lat:51.1524513, lon:-0.1482916},
+    {lat:51.1409245, lon:-0.2332499},
+    {lat:51.1440214, lon:-0.2331188},
+    {lat:51.1542142, lon:-0.1463521}
   ];
+
   const GAT_LAT=51.1537, GAT_LON=-0.1821, R=6371;
 
   function toRad(d){return d*Math.PI/180;}
@@ -80,6 +82,14 @@
     }
     return inside;
   }
+
+  // Keep last detected aircraft
+  let lastFlight = {
+    callsign: 'Waiting...',
+    aircraft: '--',
+    pilot: '--',
+    route: '-- ➔ --'
+  };
 
   // Update time every second
   setInterval(()=>{
@@ -122,21 +132,30 @@
       if(runwayFlights.length){
         const p=runwayFlights[0];
         const fp=p.flight_plan;
-        el.callsign.textContent = p.callsign;
-        el.aircraft.textContent = fp.aircraft.split(/[\/\s]/)[0];
-        el.pilot.textContent = p.name || '--';
-        el.route.textContent = fp.arrival==='EGKK' ? `${fp.departure} ➔ EGKK` : `EGKK ➔ ${fp.arrival}`;
+        const details = {
+          callsign: p.callsign,
+          aircraft: fp.aircraft.split(/[\/\s]/)[0],
+          pilot: p.name || '--',
+          route: fp.arrival==='EGKK' ? `${fp.departure} ➔ EGKK` : `EGKK ➔ ${fp.arrival}`
+        };
+        lastFlight = details; // Save for fallback
+        el.callsign.textContent = details.callsign;
+        el.aircraft.textContent = details.aircraft;
+        el.pilot.textContent = details.pilot;
+        el.route.textContent = details.route;
       } else {
-        el.callsign.textContent='No runway traffic';
-        el.aircraft.textContent='--';
-        el.pilot.textContent='--';
-        el.route.textContent='-- ➔ --';
+        // No aircraft currently on runway - show last flight
+        el.callsign.textContent = lastFlight.callsign;
+        el.aircraft.textContent = lastFlight.aircraft;
+        el.pilot.textContent = lastFlight.pilot;
+        el.route.textContent = lastFlight.route;
       }
     } catch {
-      el.callsign.textContent='Flight error';
-      el.aircraft.textContent='--';
-      el.pilot.textContent='--';
-      el.route.textContent='-- ➔ --';
+      // On error, keep showing last
+      el.callsign.textContent = lastFlight.callsign;
+      el.aircraft.textContent = lastFlight.aircraft;
+      el.pilot.textContent = lastFlight.pilot;
+      el.route.textContent = lastFlight.route;
     }
   }
   updateFlights();
