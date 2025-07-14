@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Gatwick Runway Highlighted Flight - Cool Teal Slate</title>
+<title>Gatwick Runway Highlighted Flight - Green Screen</title>
 <style>
   body {
-    margin: 0; 
+    margin: 0;
     height: 100vh;
-    background-color: #004d40; /* dark teal background */
+    background-color: #00FF00; /* chroma key green */
     display: flex;
     justify-content: center;
     align-items: flex-end;
@@ -16,7 +16,7 @@
   }
   #flight-box {
     background-color: #263238; /* slate gray box */
-    color: #cfd8dc; /* light gray-blue text */
+    color: #cfd8dc; /* soft text */
     padding: 20px 30px;
     border-radius: 15px;
     max-width: 90vw;
@@ -122,12 +122,9 @@
   }
 
   function updateText(newText) {
-    if (newText === currentText) return; // no change, no animation
+    if (newText === currentText) return; // no change
 
-    // Fade out
     box.style.opacity = '0';
-
-    // After fade out, update text & fade in
     setTimeout(() => {
       box.textContent = newText;
       currentText = newText;
@@ -140,3 +137,4 @@
 </script>
 </body>
 </html>
+
