@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Gatwick Runway Highlighted Flight - Smooth Fade</title>
+<title>Gatwick Runway Highlighted Flight - Cool Teal Slate</title>
 <style>
   body {
     margin: 0; 
     height: 100vh;
-    background-color: #008000; /* green background */
+    background-color: #004d40; /* dark teal background */
     display: flex;
     justify-content: center;
     align-items: flex-end;
@@ -15,8 +15,8 @@
     overflow: hidden;
   }
   #flight-box {
-    background-color: #555555; /* gray box */
-    color: white;
+    background-color: #263238; /* slate gray box */
+    color: #cfd8dc; /* light gray-blue text */
     padding: 20px 30px;
     border-radius: 15px;
     max-width: 90vw;
@@ -132,7 +132,7 @@
       box.textContent = newText;
       currentText = newText;
       box.style.opacity = '1';
-    }, 500); // match CSS transition duration
+    }, 500);
   }
 
   fetchHighlightedFlight();
