@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Gatwick Runway Highlighted Flight - Fast</title>
+<style>
+  body {
+    margin: 0; 
+    height: 100vh;
+    background-color: #008000; /* green background */
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    font-family: sans-serif;
+    overflow: hidden;
+  }
+  #flight-box {
+    background-color: #555555; /* gray box */
+    color: white;
+    padding: 20px 30px;
+    border-radius: 15px;
+    max-width: 90vw;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+
+    /* Start visible and slid up */
+    transform: translateY(0);
+    opacity: 1;
+
+    /* Faster animation (for future changes if needed) */
+    transition: transform 0.4s ease, opacity 0.4s ease;
+  }
+</style>
+</head>
+<body>
+  <div id="flight-box">Loading...</div>
+
+<script>
+  // Polygon of runway corners (lat, lon)
+  const runwayPolygon = [
+    {lat: 51.1518258, lon: -0.1660981}, // A
+    {lat: 51.1511402, lon: -0.1658671}, // B
+    {lat: 51.1447597, lon: -0.2121570}, // C
+    {lat: 51.1454248, lon: -0.2123059}  // D
+  ];
+
+  const GATWICK_LAT = 51.1537;
+  const GATWICK_LON = -0.1821;
+
+  function toRad(deg) { return deg * Math.PI / 180; }
+
+  function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+              Math.sin(dLon/2)**2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  function pointInPolygon(point, polygon) {
+    let inside = false;
+    for(let i = 0, j = polygon.length -1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lon, yi = polygon[i].lat;
+      const xj = polygon[j].lon, yj = polygon[j].lat;
+
+      const intersect = ((yi > point.lat) != (yj > point.lat)) &&
+                        (point.lon < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  const box = document.getElementById('flight-box');
+
+  async function fetchHighlightedFlight() {
+    // Show loading text immediately, but keep box visible
+    box.textContent = 'Loading...';
+
+    try {
+      const res = await fetch("https://data.vatsim.net/v3/vatsim-data.json");
+      const data = await res.json();
+
+      const pilots = data.pilots;
+
+      const flights = pilots.filter(p => {
+        const fp = p.flight_plan;
+        return fp &&
+          (fp.arrival === "EGKK" || fp.departure === "EGKK") &&
+          typeof p.latitude === "number" &&
+          typeof p.longitude === "number";
+      });
+
+      if (flights.length === 0) {
+        box.textContent = "No Gatwick traffic currently.";
+        return;
+      }
+
+      flights.forEach(f => {
+        f.distanceToGatwick = haversine(GATWICK_LAT, GATWICK_LON, f.latitude, f.longitude);
+      });
+
+      const planesOnRunway = flights.filter(f => pointInPolygon({lat: f.latitude, lon: f.longitude}, runwayPolygon));
+
+      if (planesOnRunway.length === 0) {
+        box.textContent = "No plane currently on runway.";
+        return;
+      }
+
+      const runwayPlane = planesOnRunway.reduce((closest, p) => {
+        return p.distanceToGatwick < closest.distanceToGatwick ? p : closest;
+      }, planesOnRunway[0]);
+
+      const fp = runwayPlane.flight_plan;
+      const pilotName = runwayPlane.name || "Unknown Pilot";
+      const rawAircraft = fp.aircraft || "Unknown Type";
+      const aircraft = rawAircraft.split(/[\/\s]/)[0];
+
+      const text = fp.arrival === "EGKK"
+        ? `${runwayPlane.callsign} inbound to Gatwick from ${fp.departure} — Aircraft: ${aircraft} — Pilot: ${pilotName}`
+        : `${runwayPlane.callsign} outbound from Gatwick to ${fp.arrival} — Aircraft: ${aircraft} — Pilot: ${pilotName}`;
+
+      box.textContent = text;
+    } catch (e) {
+      box.textContent = "Error fetching data.";
+      console.error(e);
+    }
+  }
+
+  fetchHighlightedFlight();
+  setInterval(fetchHighlightedFlight, 30000);
+</script>
+</body>
+</html>
