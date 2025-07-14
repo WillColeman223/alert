@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Gatwick Info Bar – Persistent Last Flight</title>
+<title>Gatwick Info Bar – Fast Refresh + Persistent Last Flight</title>
 <style>
   body {
     margin: 0;
@@ -19,8 +19,8 @@
     align-items: center;
     background: #1e2a38;
     color: #ffffff;
-    padding: 10px 20px;
-    font-size: 1rem;
+    padding: 12px 24px;
+    font-size: 1.2rem; /* Slightly larger text */
   }
   .cell {
     flex: 1;
@@ -83,7 +83,6 @@
     return inside;
   }
 
-  // Keep last detected aircraft
   let lastFlight = {
     callsign: 'Waiting...',
     aircraft: '--',
@@ -100,7 +99,7 @@
   // Update METAR every 2 minutes
   async function updateMETAR(){
     try {
-      const res = await fetch('https://metar.vatsim.net/EGKK.txt');
+      const res = await fetch('https://metar.vatsim.net/EGKK.txt?' + Date.now());
       const text = await res.text();
       const parts = text.split(/\s+/);
       let temp = '--';
@@ -119,10 +118,11 @@
   updateMETAR();
   setInterval(updateMETAR,120000);
 
-  // Update VATSIM every 5 seconds
+  // Update VATSIM every 3 seconds
   async function updateFlights(){
     try {
-      const data = await fetch('https://data.vatsim.net/v3/vatsim-data.json').then(r=>r.json());
+      const url = 'https://data.vatsim.net/v3/vatsim-data.json?' + Date.now();
+      const data = await fetch(url).then(r=>r.json());
       const flights = data.pilots.filter(p=>{
         const fp=p.flight_plan;
         return fp&&(fp.arrival==='EGKK'||fp.departure==='EGKK')&&typeof p.latitude==='number';
@@ -138,20 +138,20 @@
           pilot: p.name || '--',
           route: fp.arrival==='EGKK' ? `${fp.departure} ➔ EGKK` : `EGKK ➔ ${fp.arrival}`
         };
-        lastFlight = details; // Save for fallback
+        lastFlight = details; // Save this as the latest flight
         el.callsign.textContent = details.callsign;
         el.aircraft.textContent = details.aircraft;
         el.pilot.textContent = details.pilot;
         el.route.textContent = details.route;
       } else {
-        // No aircraft currently on runway - show last flight
+        // Show the last known flight if no aircraft on runway
         el.callsign.textContent = lastFlight.callsign;
         el.aircraft.textContent = lastFlight.aircraft;
         el.pilot.textContent = lastFlight.pilot;
         el.route.textContent = lastFlight.route;
       }
     } catch {
-      // On error, keep showing last
+      // On error, keep last flight
       el.callsign.textContent = lastFlight.callsign;
       el.aircraft.textContent = lastFlight.aircraft;
       el.pilot.textContent = lastFlight.pilot;
@@ -159,8 +159,7 @@
     }
   }
   updateFlights();
-  setInterval(updateFlights,5000);
+  setInterval(updateFlights,3000); // 3 seconds refresh
 </script>
 </body>
 </html>
-
