@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Gatwick Runway Highlighted Flight - Animated</title>
+<title>Gatwick Runway Highlighted Flight - Smooth Fade</title>
 <style>
   body {
     margin: 0; 
@@ -11,7 +11,7 @@
     display: flex;
     justify-content: center;
     align-items: flex-end;
-    font-family: sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     overflow: hidden;
   }
   #flight-box {
@@ -20,15 +20,11 @@
     padding: 20px 30px;
     border-radius: 15px;
     max-width: 90vw;
-    font-size: 1.5rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    font-size: 1.6rem;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
     opacity: 1;
-    transform: translateY(0);
-    transition: opacity 0.4s ease, transform 0.4s ease;
-  }
-  #flight-box.hidden {
-    opacity: 0;
-    transform: translateY(30px);
+    transition: opacity 0.5s ease;
+    user-select: none;
   }
 </style>
 </head>
@@ -75,9 +71,6 @@
   let currentText = '';
 
   async function fetchHighlightedFlight() {
-    // Animate out
-    box.classList.add('hidden');
-
     try {
       const res = await fetch("https://data.vatsim.net/v3/vatsim-data.json");
       const data = await res.json();
@@ -129,17 +122,17 @@
   }
 
   function updateText(newText) {
-    if (newText === currentText) {
-      // No change, just fade back in
-      box.classList.remove('hidden');
-      return;
-    }
-    // Wait for fade-out transition (400ms)
+    if (newText === currentText) return; // no change, no animation
+
+    // Fade out
+    box.style.opacity = '0';
+
+    // After fade out, update text & fade in
     setTimeout(() => {
       box.textContent = newText;
       currentText = newText;
-      box.classList.remove('hidden');
-    }, 400);
+      box.style.opacity = '1';
+    }, 500); // match CSS transition duration
   }
 
   fetchHighlightedFlight();
