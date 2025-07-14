@@ -90,15 +90,28 @@
     try {
       const res = await fetch('https://metar.vatsim.net/EGKK.txt');
       const text = await res.text();
-      const match = text.match(/ (\d{2})\/\d{2} /);
-      if (match) {
-        el.temp.textContent = `${match[1]}°C`;
+      const parts = text.split(/\s+/);
+      let temp = null;
+      
+      for (const part of parts) {
+        if (/^(M?\d{1,2})\/(M?\d{1,2})$/.test(part)) {
+          const match = part.match(/^(M?\d{1,2})/);
+          if (match) {
+            temp = match[1].replace('M', '-');
+            break;
+          }
+        }
+      }
+      
+      if (temp !== null) {
+        el.temp.textContent = `${temp}°C`;
       } else {
         el.temp.textContent = '--°C';
       }
-    } catch {
-      el.temp.textContent = '--°C';
-    }
+      
+          } catch {
+            el.temp.textContent = '--°C';
+          }
 
     // VATSIM flight
     try {
