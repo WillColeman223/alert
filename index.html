@@ -2,34 +2,52 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Gatwick Runway Highlighted Flight - Green Screen</title>
+<title>Gatwick Runway Highlighted Flight - RadarBox Style</title>
 <style>
   body {
     margin: 0;
     height: 100vh;
-    background-color: #00FF00; /* chroma key green */
+    background-color: #00FF00; /* chroma green */
     display: flex;
     justify-content: center;
     align-items: flex-end;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     overflow: hidden;
   }
-  #flight-box {
-    background-color: #263238; /* slate gray box */
-    color: #cfd8dc; /* soft text */
-    padding: 20px 30px;
-    border-radius: 15px;
-    max-width: 90vw;
+  .overlay {
+    background: rgba(20, 20, 20, 0.92);
+    color: #EEEEEE;
+    padding: 20px 25px;
+    border-radius: 10px;
+    max-width: 500px;
+    font-size: 1.2rem;
+    box-shadow: 0 0 10px rgba(0,0,0,0.7);
+  }
+  .callsign {
     font-size: 1.6rem;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-    opacity: 1;
-    transition: opacity 0.5s ease;
-    user-select: none;
+    font-weight: bold;
+    color: #00E5FF;
+    margin-bottom: 8px;
+  }
+  .info {
+    margin: 5px 0;
+  }
+  .weather {
+    margin-top: 10px;
+    font-size: 1.1rem;
+    color: #CCCCCC;
   }
 </style>
 </head>
 <body>
-  <div id="flight-box"></div>
+  <div class="overlay">
+    <div id="callsign" class="callsign">Loading...</div>
+    <div id="route" class="info"></div>
+    <div id="aircraft" class="info"></div>
+    <div id="pilot" class="info"></div>
+    <div id="distance" class="info"></div>
+    <div id="weather" class="weather"></div>
+  </div>
 
 <script>
   const runwayPolygon = [
@@ -38,103 +56,90 @@
     {lat: 51.1447597, lon: -0.2121570},
     {lat: 51.1454248, lon: -0.2123059}
   ];
-
   const GATWICK_LAT = 51.1537;
   const GATWICK_LON = -0.1821;
+  const R = 6371;
 
-  function toRad(deg) { return deg * Math.PI / 180; }
+  const callsignEl = document.getElementById('callsign');
+  const routeEl = document.getElementById('route');
+  const aircraftEl = document.getElementById('aircraft');
+  const pilotEl = document.getElementById('pilot');
+  const distanceEl = document.getElementById('distance');
+  const weatherEl = document.getElementById('weather');
 
-  function haversine(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
+  function toRad(d){return d*Math.PI/180;}
+  function haversine(lat1,lon1,lat2,lon2){
+    const dLat = toRad(lat2-lat1);
+    const dLon = toRad(lon2-lon1);
     const a = Math.sin(dLat/2)**2 +
               Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
               Math.sin(dLon/2)**2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   }
-
-  function pointInPolygon(point, polygon) {
+  function pointInPolygon(point, polygon){
     let inside = false;
-    for(let i = 0, j = polygon.length -1; i < polygon.length; j = i++) {
-      const xi = polygon[i].lon, yi = polygon[i].lat;
-      const xj = polygon[j].lon, yj = polygon[j].lat;
-      const intersect = ((yi > point.lat) != (yj > point.lat)) &&
-                        (point.lon < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
+    for (let i=0, j=polygon.length-1; i<polygon.length; j=i++) {
+      const xi=polygon[i].lon, yi=polygon[i].lat;
+      const xj=polygon[j].lon, yj=polygon[j].lat;
+      const intersect = ((yi>point.lat)!=(yj>point.lat)) &&
+        (point.lon<(xj - xi)*(point.lat - yi)/(yj - yi)+xi);
       if (intersect) inside = !inside;
     }
     return inside;
   }
 
-  const box = document.getElementById('flight-box');
-  let currentText = '';
-
-  async function fetchHighlightedFlight() {
-    try {
+  async function fetchData(){
+    // Flight data
+    try{
       const res = await fetch("https://data.vatsim.net/v3/vatsim-data.json");
-      const data = await res.json();
+      const data = (await res.json()).pilots;
 
-      const pilots = data.pilots;
-
-      const flights = pilots.filter(p => {
-        const fp = p.flight_plan;
-        return fp &&
-          (fp.arrival === "EGKK" || fp.departure === "EGKK") &&
-          typeof p.latitude === "number" &&
-          typeof p.longitude === "number";
+      const flights = data.filter(p=>{
+        const fp=p.flight_plan;
+        return fp && (fp.arrival==="EGKK" || fp.departure==="EGKK")
+          && typeof p.latitude==="number";
       });
 
-      if (flights.length === 0) {
-        updateText("No Gatwick traffic currently.");
+      flights.forEach(f=>{
+        f.distance=haversine(GATWICK_LAT,GATWICK_LON,f.latitude,f.longitude);
+      });
+
+      const runwayFlights=flights.filter(f=>pointInPolygon({lat:f.latitude,lon:f.longitude}, runwayPolygon));
+
+      if(runwayFlights.length===0){
+        callsignEl.textContent="No plane on runway";
+        routeEl.textContent="";
+        aircraftEl.textContent="";
+        pilotEl.textContent="";
+        distanceEl.textContent="";
         return;
       }
 
-      flights.forEach(f => {
-        f.distanceToGatwick = haversine(GATWICK_LAT, GATWICK_LON, f.latitude, f.longitude);
-      });
-
-      const planesOnRunway = flights.filter(f => pointInPolygon({lat: f.latitude, lon: f.longitude}, runwayPolygon));
-
-      if (planesOnRunway.length === 0) {
-        updateText("No plane currently on runway.");
-        return;
-      }
-
-      const runwayPlane = planesOnRunway.reduce((closest, p) => {
-        return p.distanceToGatwick < closest.distanceToGatwick ? p : closest;
-      }, planesOnRunway[0]);
-
-      const fp = runwayPlane.flight_plan;
-      const pilotName = runwayPlane.name || "Unknown Pilot";
-      const rawAircraft = fp.aircraft || "Unknown Type";
-      const aircraft = rawAircraft.split(/[\/\s]/)[0];
-
-      const text = fp.arrival === "EGKK"
-        ? `${runwayPlane.callsign} inbound to Gatwick from ${fp.departure} — Aircraft: ${aircraft} — Pilot: ${pilotName}`
-        : `${runwayPlane.callsign} outbound from Gatwick to ${fp.arrival} — Aircraft: ${aircraft} — Pilot: ${pilotName}`;
-
-      updateText(text);
-    } catch (e) {
-      updateText("Error fetching data.");
-      console.error(e);
+      const p=runwayFlights[0];
+      const fp=p.flight_plan;
+      const ac=fp.aircraft.split(/[\/\s]/)[0];
+      callsignEl.textContent=p.callsign;
+      routeEl.textContent=fp.arrival==="EGKK" 
+        ? `Inbound from ${fp.departure}`
+        : `Outbound to ${fp.arrival}`;
+      aircraftEl.textContent=`Aircraft: ${ac}`;
+      pilotEl.textContent=`Pilot: ${p.name || "Unknown"}`;
+      distanceEl.textContent=`Distance to Gatwick: ${p.distance.toFixed(1)} km`;
+    } catch(e){
+      callsignEl.textContent="Error loading flight data";
     }
+
+    // Weather data (replace with your API key!)
+    const apiKey="YOUR_OPENWEATHERMAP_API_KEY";
+    const weatherRes=await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=51.1537&lon=-0.1821&units=metric&appid=${apiKey}`);
+    const weather=await weatherRes.json();
+    const desc=weather.weather[0].description;
+    const temp=weather.main.temp;
+    weatherEl.textContent=`Weather: ${desc}, ${temp}°C`;
   }
 
-  function updateText(newText) {
-    if (newText === currentText) return; // no change
-
-    box.style.opacity = '0';
-    setTimeout(() => {
-      box.textContent = newText;
-      currentText = newText;
-      box.style.opacity = '1';
-    }, 500);
-  }
-
-  fetchHighlightedFlight();
-  setInterval(fetchHighlightedFlight, 30000);
+  fetchData();
+  setInterval(fetchData, 30000);
 </script>
 </body>
 </html>
-
