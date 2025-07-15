@@ -14,7 +14,7 @@
       width: 100%;
       border-collapse: collapse;
       margin: 0 auto;
-      background-color: #1e2a38; /* NEW table background color */
+      background-color: #1e2a38;
       color: white;
       font-family: Arial, sans-serif;
       font-size: 18px;
@@ -65,7 +65,7 @@
   <table>
     <thead>
       <tr class="title-row">
-        <th colspan="6">Departures & Arrivals</th>
+        <th colspan="5">Departures & Arrivals</th>
       </tr>
       <tr>
         <th>Status</th>
@@ -73,11 +73,10 @@
         <th>Callsign</th>
         <th>Aircraft</th>
         <th>To/From</th>
-        <th>Distance (NM)</th>
       </tr>
     </thead>
     <tbody id="flight-table">
-      <tr><td colspan="6">Loading...</td></tr>
+      <tr><td colspan="5">Loading...</td></tr>
     </tbody>
   </table>
 
@@ -100,7 +99,7 @@
       const data = await res.json();
       const tableBody = document.getElementById("flight-table");
       const now = new Date();
-      const minTime = new Date(now.getTime() - 10 * 60 * 1000); // 10 minutes ago
+      const minTime = new Date(now.getTime() - 10 * 60 * 1000);
 
       const flights = [];
 
@@ -112,11 +111,13 @@
         const isDeparture = fp.departure === "EGKK";
         if (!isArrival && !isDeparture) continue;
 
+        // Ensure valid position
+        if (typeof pilot.latitude !== "number" || typeof pilot.longitude !== "number") continue;
+
         const callsign = pilot.callsign;
         const aircraft = fp.aircraft_short || "-";
         const toFrom = isDeparture ? fp.arrival : fp.departure;
 
-        // Estimate flight time
         let flightTime = new Date(pilot.logon_time + "Z");
         if (fp.deptime && /^\d{4}$/.test(fp.deptime)) {
           const h = parseInt(fp.deptime.slice(0, 2), 10);
@@ -133,29 +134,24 @@
           minute: "2-digit"
         });
 
-        // Distance to EGKK
-        let distance = pilot.latitude && pilot.longitude
-          ? haversine(pilot.latitude, pilot.longitude, EGKK_COORDS.lat, EGKK_COORDS.lon).toFixed(1)
-          : "—";
+        const distance = haversine(pilot.latitude, pilot.longitude, EGKK_COORDS.lat, EGKK_COORDS.lon);
 
-        // Determine status
         let status = isArrival ? "Arrival" : "Departure";
         let rowClass = isArrival ? "status-arr" : "status-dep";
 
-        if (pilot.groundspeed < 40 && pilot.altitude < 1000 && distance !== "—" && distance < 10) {
+        if (pilot.groundspeed < 40 && pilot.altitude < 1000 && distance < 10) {
           status = "Landed";
           rowClass = "status-landed";
         }
 
         flights.push({
-          dist: parseFloat(distance === "—" ? "9999" : distance),
+          dist: distance,
           html: `<tr class="${rowClass}">
             <td>${status}</td>
             <td>${localTime}</td>
             <td>${callsign}</td>
             <td>${aircraft}</td>
             <td>${toFrom}</td>
-            <td>${distance}</td>
           </tr>`
         });
       }
@@ -164,7 +160,7 @@
       const limited = flights.slice(0, 5);
       tableBody.innerHTML = limited.length
         ? limited.map(f => f.html).join("")
-        : `<tr><td colspan="6">No active traffic near EGKK</td></tr>`;
+        : `<tr><td colspan="5">No active traffic near EGKK</td></tr>`;
     }
 
     fetchFlights();
