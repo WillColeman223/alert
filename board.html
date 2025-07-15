@@ -1,112 +1,128 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Departures & Arrivals</title>
-<style>
-  body {
-    background-color: #00FF00; /* Chroma key green */
-    margin: 0;
-    padding: 0;
-  }
+  <style>
+    body {
+      background-color: #00FF00; /* OBS chroma key green */
+      margin: 0;
+      padding: 0;
+    }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 0 auto;
-    background-color: #1e2a38;
-    color: white;
-    font-family: Arial, sans-serif;
-    font-size: 18px;
-  }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 auto;
+      background-color: #1e2a38; /* NEW table background color */
+      color: white;
+      font-family: Arial, sans-serif;
+      font-size: 18px;
+    }
 
-  th, td {
-    border: 1px solid #30445a; /* lighter blue-gray border */
-    padding: 6px 10px;
-    text-align: left;
-  }
+    th, td {
+      border: 1px solid #444;
+      padding: 6px 10px;
+      text-align: left;
+    }
 
-  th {
-    background-color: #1e2a38;
-    color: white;
-  }
+    th {
+      background-color: #111;
+      color: #ffff00;
+    }
 
-  tr:nth-child(even) {
-    background-color: #2b3b4f; /* medium blue shade */
-  }
+    tr:nth-child(even) {
+      background-color: #263544;
+    }
 
-  tr:nth-child(odd) {
-    background-color: #223344; /* darker blue shade */
-  }
+    tr:nth-child(odd) {
+      background-color: #1e2a38;
+    }
 
-  .title-row th {
-    text-align: center;
-    font-size: 24px;
-    padding: 12px;
-    background-color: #1e2a38; /* replacing black */
-    border: none;
-    color: #ffff00;
-  }
+    .title-row th {
+      text-align: center;
+      font-size: 24px;
+      padding: 12px;
+      background-color: #1e2a38;
+      border: none;
+      color: #ffff00;
+    }
 
-  .dir-dep td:first-child {
-    color: #00cc66;
-  }
+    .status-dep td:first-child {
+      color: #00cc66;
+    }
 
-  .dir-arr td:first-child {
-    color: #ffcc00;
-  }
-</style>
+    .status-arr td:first-child {
+      color: #ffcc00;
+    }
 
-
+    .status-landed td:first-child {
+      color: #999999;
+    }
+  </style>
 </head>
 <body>
   <table>
     <thead>
       <tr class="title-row">
-        <th colspan="5">Departures & Arrivals</th>
+        <th colspan="6">Departures & Arrivals</th>
       </tr>
       <tr>
-        <th></th> <!-- Departure / Arrival label -->
+        <th>Status</th>
         <th>Time</th>
         <th>Callsign</th>
         <th>Aircraft</th>
-        <th>To/From</th> <!-- renamed -->
+        <th>To/From</th>
+        <th>Distance (NM)</th>
       </tr>
     </thead>
     <tbody id="flight-table">
-      <tr><td colspan="5">Loading...</td></tr>
+      <tr><td colspan="6">Loading...</td></tr>
     </tbody>
   </table>
 
   <script>
+    const EGKK_COORDS = { lat: 51.1481, lon: -0.1903 };
+
+    function haversine(lat1, lon1, lat2, lon2) {
+      const R = 3440.1; // nautical miles
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
     async function fetchFlights() {
       const res = await fetch("https://data.vatsim.net/v3/vatsim-data.json");
       const data = await res.json();
       const tableBody = document.getElementById("flight-table");
       const now = new Date();
-      const minTime = new Date(now.getTime() - 10 * 60 * 1000); // 10 min ago
+      const minTime = new Date(now.getTime() - 10 * 60 * 1000); // 10 minutes ago
 
       const flights = [];
 
       for (const pilot of data.pilots) {
         const fp = pilot.flight_plan;
-        if (!fp) continue;
-        const { departure: dep, arrival: arr, aircraft_short: acft, deptime } = fp;
-        if (dep !== "EGKK" && arr !== "EGKK") continue;
+        if (!fp || (!fp.departure || !fp.arrival)) continue;
+
+        const isArrival = fp.arrival === "EGKK";
+        const isDeparture = fp.departure === "EGKK";
+        if (!isArrival && !isDeparture) continue;
 
         const callsign = pilot.callsign;
-        const isDeparture = dep === "EGKK";
-        const direction = isDeparture ? "Departure" : "Arrival";
-        const otherAirport = isDeparture ? arr : dep; // Only show the other code
+        const aircraft = fp.aircraft_short || "-";
+        const toFrom = isDeparture ? fp.arrival : fp.departure;
 
-        // Estimate time
+        // Estimate flight time
         let flightTime = new Date(pilot.logon_time + "Z");
-        if (deptime && /^\d{4}$/.test(deptime)) {
-          const hours = parseInt(deptime.substring(0, 2), 10);
-          const minutes = parseInt(deptime.substring(2, 4), 10);
+        if (fp.deptime && /^\d{4}$/.test(fp.deptime)) {
+          const h = parseInt(fp.deptime.slice(0, 2), 10);
+          const m = parseInt(fp.deptime.slice(2), 10);
           const utc = new Date();
-          utc.setUTCHours(hours, minutes, 0, 0);
+          utc.setUTCHours(h, m, 0, 0);
           flightTime = utc;
         }
 
@@ -117,27 +133,42 @@
           minute: "2-digit"
         });
 
+        // Distance to EGKK
+        let distance = pilot.latitude && pilot.longitude
+          ? haversine(pilot.latitude, pilot.longitude, EGKK_COORDS.lat, EGKK_COORDS.lon).toFixed(1)
+          : "—";
+
+        // Determine status
+        let status = isArrival ? "Arrival" : "Departure";
+        let rowClass = isArrival ? "status-arr" : "status-dep";
+
+        if (pilot.groundspeed < 40 && pilot.altitude < 1000 && distance !== "—" && distance < 10) {
+          status = "Landed";
+          rowClass = "status-landed";
+        }
+
         flights.push({
-          time: flightTime,
-          html: `<tr class="${isDeparture ? 'dir-dep' : 'dir-arr'}">
-            <td>${direction}</td>
+          dist: parseFloat(distance === "—" ? "9999" : distance),
+          html: `<tr class="${rowClass}">
+            <td>${status}</td>
             <td>${localTime}</td>
             <td>${callsign}</td>
-            <td>${acft}</td>
-            <td>${otherAirport}</td>
+            <td>${aircraft}</td>
+            <td>${toFrom}</td>
+            <td>${distance}</td>
           </tr>`
         });
       }
 
-      flights.sort((a, b) => a.time - b.time);
+      flights.sort((a, b) => a.dist - b.dist);
       const limited = flights.slice(0, 5);
       tableBody.innerHTML = limited.length
         ? limited.map(f => f.html).join("")
-        : `<tr><td colspan="5">No upcoming flights</td></tr>`;
+        : `<tr><td colspan="6">No active traffic near EGKK</td></tr>`;
     }
 
     fetchFlights();
-    setInterval(fetchFlights, 60000);
+    setInterval(fetchFlights, 60000); // update every 60s
   </script>
 </body>
 </html>
