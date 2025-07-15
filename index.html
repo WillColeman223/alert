@@ -1,165 +1,186 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Gatwick Info Bar – Fast Refresh + Persistent Last Flight</title>
-<style>
-  body {
-    margin: 0;
-    background: #00FF00; /* chroma key green screen */
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  }
-  .infobar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #1e2a38;
-    color: #ffffff;
-    padding: 12px 24px;
-    font-size: 1.2rem; /* Slightly larger text */
-  }
-  .cell {
-    flex: 1;
-    text-align: center;
-    border-left: 1px solid rgba(255,255,255,0.2);
-    padding: 4px 8px;
-  }
-  .cell:first-child {
-    border-left: none;
-    text-align: left;
-    font-weight: bold;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <title>Gatwick Info Bar – Fast Refresh + Persistent Last Flight</title>
+  <!-- Font Awesome Free CDN -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  />
+  <style>
+    body {
+      margin: 0;
+      background: #00FF00; /* chroma key green screen */
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .infobar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1e2a38;
+      color: #ffffff;
+      padding: 12px 24px;
+      font-size: 1.2rem;
+    }
+    .cell {
+      flex: 1;
+      text-align: center;
+      border-left: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .cell:first-child {
+      border-left: none;
+      text-align: left;
+      font-weight: bold;
+      justify-content: flex-start;
+    }
+    .cell i {
+      font-size: 1.1rem;
+    }
+  </style>
 </head>
 <body>
-<div class="infobar">
-  <div class="cell" id="airport">EGKK</div>
-  <div class="cell" id="time">--:--</div>
-  <div class="cell" id="temp">--°C</div>
-  <div class="cell" id="callsign">Loading...</div>
-  <div class="cell" id="aircraft">--</div>
-  <div class="cell" id="pilot">--</div>
-  <div class="cell" id="route">-- ➔ --</div>
-</div>
+  <div class="infobar">
+    <div class="cell" id="airport"><i class="fas fa-location-dot"></i> <span>EGKK</span></div>
+    <div class="cell" id="time"><i class="fas fa-clock"></i> <span>--:--</span></div>
+    <div class="cell" id="temp"><i class="fas fa-temperature-high"></i> <span>--°C</span></div>
+    <div class="cell" id="callsign"><i class="fas fa-plane"></i> <span>Loading...</span></div>
+    <div class="cell" id="aircraft"><i class="fas fa-fighter-jet"></i> <span>--</span></div>
+    <div class="cell" id="pilot"><i class="fas fa-user"></i> <span>--</span></div>
+    <div class="cell" id="route"><i class="fas fa-route"></i> <span>-- ➔ --</span></div>
+  </div>
 
-<script>
-  const el = {
-    time: document.getElementById('time'),
-    temp: document.getElementById('temp'),
-    callsign: document.getElementById('callsign'),
-    aircraft: document.getElementById('aircraft'),
-    pilot: document.getElementById('pilot'),
-    route: document.getElementById('route')
-  };
+  <script>
+    const el = {
+      time: document.getElementById('time'),
+      temp: document.getElementById('temp'),
+      callsign: document.getElementById('callsign'),
+      aircraft: document.getElementById('aircraft'),
+      pilot: document.getElementById('pilot'),
+      route: document.getElementById('route')
+    };
 
-  // Updated runway coordinates
-  const runway = [
-    {lat:51.1524513, lon:-0.1482916},
-    {lat:51.1409245, lon:-0.2332499},
-    {lat:51.1440214, lon:-0.2331188},
-    {lat:51.1542142, lon:-0.1463521}
-  ];
+    const runway = [
+      { lat: 51.1524513, lon: -0.1482916 },
+      { lat: 51.1409245, lon: -0.2332499 },
+      { lat: 51.1440214, lon: -0.2331188 },
+      { lat: 51.1542142, lon: -0.1463521 }
+    ];
 
-  const GAT_LAT=51.1537, GAT_LON=-0.1821, R=6371;
+    const GAT_LAT = 51.1537, GAT_LON = -0.1821, R = 6371;
 
-  function toRad(d){return d*Math.PI/180;}
-  function hav(lat1,lon1,lat2,lon2){
-    const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
-    const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-    return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  }
-  function pip(pt, poly){
-    let inside=false;
-    for(let i=0,j=poly.length-1;i<poly.length;j=i++){
-      const xi=poly[i].lon,yi=poly[i].lat;
-      const xj=poly[j].lon,yj=poly[j].lat;
-      const intersect=((yi>pt.lat)!=(yj>pt.lat))&&(pt.lon<(xj-xi)*(pt.lat-yi)/(yj-yi)+xi);
-      if(intersect)inside=!inside;
+    function toRad(d) { return d * Math.PI / 180; }
+    function hav(lat1, lon1, lat2, lon2) {
+      const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
-    return inside;
-  }
-
-  let lastFlight = {
-    callsign: 'Waiting...',
-    aircraft: '--',
-    pilot: '--',
-    route: '-- ➔ --'
-  };
-
-  // Update time every second
-  setInterval(()=>{
-    const now=new Date();
-    el.time.textContent = now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  },1000);
-
-  // Update METAR every 2 minutes
-  async function updateMETAR() {
-  try {
-    const res = await fetch('https://metar.vatsim.net/egkk?' + Date.now());
-    const text = await res.text();
-    const match = text.match(/\s(M?\d{2})\/(M?\d{2})\s/);
-
-    if (match) {
-      const rawTemp = match[1];
-      const temp = rawTemp.startsWith('M') ? '-' + rawTemp.slice(1) : rawTemp;
-      el.temp.textContent = `${temp}°C`;
-    } else {
-      el.temp.textContent = '--°C';
-    }
-  } catch (e) {
-    console.error('Failed to fetch METAR', e);
-    el.temp.textContent = '--°C';
-  }
-}
-  updateMETAR();
-  setInterval(updateMETAR,120000);
-
-  // Update VATSIM every 3 seconds
-  async function updateFlights(){
-    try {
-      const url = 'https://data.vatsim.net/v3/vatsim-data.json?' + Date.now();
-      const data = await fetch(url).then(r=>r.json());
-      const flights = data.pilots.filter(p=>{
-        const fp=p.flight_plan;
-        return fp&&(fp.arrival==='EGKK'||fp.departure==='EGKK')&&typeof p.latitude==='number';
-      });
-      flights.forEach(f=>f.d=hav(GAT_LAT,GAT_LON,f.latitude,f.longitude));
-      const runwayFlights = flights.filter(f=>pip({lat:f.latitude,lon:f.longitude},runway));
-      if(runwayFlights.length){
-        const p=runwayFlights[0];
-        const fp=p.flight_plan;
-        const details = {
-          callsign: p.callsign,
-          aircraft: fp.aircraft.split(/[\/\s]/)[0],
-          pilot: p.name || '--',
-          route: fp.arrival==='EGKK' ? `${fp.departure} ➔ EGKK` : `EGKK ➔ ${fp.arrival}`
-        };
-        lastFlight = details; // Save this as the latest flight
-        el.callsign.textContent = details.callsign;
-        el.aircraft.textContent = details.aircraft;
-        el.pilot.textContent = details.pilot;
-        el.route.textContent = details.route;
-      } else {
-        // Show the last known flight if no aircraft on runway
-        el.callsign.textContent = lastFlight.callsign;
-        el.aircraft.textContent = lastFlight.aircraft;
-        el.pilot.textContent = lastFlight.pilot;
-        el.route.textContent = lastFlight.route;
+    function pip(pt, poly) {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i].lon, yi = poly[i].lat;
+        const xj = poly[j].lon, yj = poly[j].lat;
+        const intersect = ((yi > pt.lat) !== (yj > pt.lat)) &&
+                          (pt.lon < (xj - xi) * (pt.lat - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
       }
-    } catch {
-      // On error, keep last flight
-      el.callsign.textContent = lastFlight.callsign;
-      el.aircraft.textContent = lastFlight.aircraft;
-      el.pilot.textContent = lastFlight.pilot;
-      el.route.textContent = lastFlight.route;
+      return inside;
     }
-  }
-  updateFlights();
-  setInterval(updateFlights,3000); // 3 seconds refresh
-</script>
+
+    let lastFlight = {
+      callsign: 'Waiting...',
+      aircraft: '--',
+      pilot: '--',
+      route: '-- ➔ --'
+    };
+
+    // Update time every second
+    setInterval(() => {
+      const now = new Date();
+      el.time.querySelector('span').textContent = now.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }, 1000);
+
+    // Update METAR every 2 minutes
+    async function updateMETAR() {
+      try {
+        const res = await fetch('https://metar.vatsim.net/egkk?' + Date.now());
+        const text = await res.text();
+        const match = text.match(/\s(M?\d{2})\/(M?\d{2})\s/);
+
+        if (match) {
+          const rawTemp = match[1];
+          const temp = rawTemp.startsWith('M') ? '-' + rawTemp.slice(1) : rawTemp;
+          el.temp.querySelector('span').textContent = `${temp}°C`;
+        } else {
+          el.temp.querySelector('span').textContent = '--°C';
+        }
+      } catch (e) {
+        console.error('Failed to fetch METAR', e);
+        el.temp.querySelector('span').textContent = '--°C';
+      }
+    }
+    updateMETAR();
+    setInterval(updateMETAR, 120000);
+
+    // Update VATSIM every 3 seconds
+    async function updateFlights() {
+      try {
+        const url = 'https://data.vatsim.net/v3/vatsim-data.json?' + Date.now();
+        const data = await fetch(url).then(r => r.json());
+        const flights = data.pilots.filter(p => {
+          const fp = p.flight_plan;
+          return fp && (fp.arrival === 'EGKK' || fp.departure === 'EGKK') && typeof p.latitude === 'number';
+        });
+
+        flights.forEach(f => f.d = hav(GAT_LAT, GAT_LON, f.latitude, f.longitude));
+        const runwayFlights = flights.filter(f =>
+          pip({ lat: f.latitude, lon: f.longitude }, runway)
+        );
+
+        if (runwayFlights.length) {
+          const p = runwayFlights[0];
+          const fp = p.flight_plan;
+          const details = {
+            callsign: p.callsign,
+            aircraft: fp.aircraft.split(/[\/\s]/)[0],
+            pilot: p.name || '--',
+            route: fp.arrival === 'EGKK' ? `${fp.departure} ➔ EGKK` : `EGKK ➔ ${fp.arrival}`
+          };
+          lastFlight = details;
+          el.callsign.querySelector('span').textContent = details.callsign;
+          el.aircraft.querySelector('span').textContent = details.aircraft;
+          el.pilot.querySelector('span').textContent = details.pilot;
+          el.route.querySelector('span').textContent = details.route;
+        } else {
+          el.callsign.querySelector('span').textContent = lastFlight.callsign;
+          el.aircraft.querySelector('span').textContent = lastFlight.aircraft;
+          el.pilot.querySelector('span').textContent = lastFlight.pilot;
+          el.route.querySelector('span').textContent = lastFlight.route;
+        }
+      } catch (e) {
+        console.error('Failed to fetch VATSIM data', e);
+        el.callsign.querySelector('span').textContent = lastFlight.callsign;
+        el.aircraft.querySelector('span').textContent = lastFlight.aircraft;
+        el.pilot.querySelector('span').textContent = lastFlight.pilot;
+        el.route.querySelector('span').textContent = lastFlight.route;
+      }
+    }
+
+    updateFlights();
+    setInterval(updateFlights, 3000); // Refresh every 3 seconds
+  </script>
 </body>
 </html>
