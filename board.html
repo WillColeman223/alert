@@ -55,10 +55,6 @@
     .status-arr td:first-child {
       color: #ffcc00;
     }
-
-    .status-landed td:first-child {
-      color: #999999;
-    }
   </style>
 </head>
 <body>
@@ -84,7 +80,7 @@
     const EGKK_COORDS = { lat: 51.1481, lon: -0.1903 };
 
     function haversine(lat1, lon1, lat2, lon2) {
-      const R = 3440.1; // nautical miles
+      const R = 3440.1;
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
       const a = Math.sin(dLat / 2) ** 2 +
@@ -98,73 +94,80 @@
       const res = await fetch("https://data.vatsim.net/v3/vatsim-data.json");
       const data = await res.json();
       const tableBody = document.getElementById("flight-table");
-      const now = new Date();
-      const minTime = new Date(now.getTime() - 10 * 60 * 1000);
 
-      const flights = [];
+      const departures = [];
+      const arrivals = [];
 
       for (const pilot of data.pilots) {
         const fp = pilot.flight_plan;
-        if (!fp || (!fp.departure || !fp.arrival)) continue;
+        if (!fp || !fp.departure || !fp.arrival) continue;
 
         const isArrival = fp.arrival === "EGKK";
         const isDeparture = fp.departure === "EGKK";
         if (!isArrival && !isDeparture) continue;
 
-        // Ensure valid position
         if (typeof pilot.latitude !== "number" || typeof pilot.longitude !== "number") continue;
 
-        const callsign = pilot.callsign;
-        const aircraft = fp.aircraft_short || "-";
-        const toFrom = isDeparture ? fp.arrival : fp.departure;
+        const distance = haversine(pilot.latitude, pilot.longitude, EGKK_COORDS.lat, EGKK_COORDS.lon);
 
-        let flightTime = new Date(pilot.logon_time + "Z");
+        // Filter out landed arrivals
+        if (
+          isArrival &&
+          pilot.groundspeed < 40 &&
+          pilot.altitude < 1000 &&
+          distance < 10
+        ) continue;
+
+        const status = isDeparture ? "Departure" : "Arrival";
+        const rowClass = isDeparture ? "status-dep" : "status-arr";
+
+        // Time from logon or deptime
+        let flightTime;
         if (fp.deptime && /^\d{4}$/.test(fp.deptime)) {
           const h = parseInt(fp.deptime.slice(0, 2), 10);
           const m = parseInt(fp.deptime.slice(2), 10);
-          const utc = new Date();
-          utc.setUTCHours(h, m, 0, 0);
-          flightTime = utc;
+          flightTime = new Date();
+          flightTime.setUTCHours(h, m, 0, 0);
+        } else {
+          flightTime = new Date(pilot.logon_time + "Z");
         }
-
-        if (flightTime < minTime) continue;
 
         const localTime = flightTime.toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit"
         });
 
-        const distance = haversine(pilot.latitude, pilot.longitude, EGKK_COORDS.lat, EGKK_COORDS.lon);
+        const html = `<tr class="${rowClass}">
+          <td>${status}</td>
+          <td>${localTime}</td>
+          <td>${pilot.callsign}</td>
+          <td>${fp.aircraft_short || "-"}</td>
+          <td>${isDeparture ? fp.arrival : fp.departure}</td>
+        </tr>`;
 
-        let status = isArrival ? "Arrival" : "Departure";
-        let rowClass = isArrival ? "status-arr" : "status-dep";
+        const record = { dist: distance, html };
 
-        if (pilot.groundspeed < 40 && pilot.altitude < 1000 && distance < 10) {
-          status = "Landed";
-          rowClass = "status-landed";
-        }
-
-        flights.push({
-          dist: distance,
-          html: `<tr class="${rowClass}">
-            <td>${status}</td>
-            <td>${localTime}</td>
-            <td>${callsign}</td>
-            <td>${aircraft}</td>
-            <td>${toFrom}</td>
-          </tr>`
-        });
+        if (isDeparture) departures.push(record);
+        if (isArrival) arrivals.push(record);
       }
 
-      flights.sort((a, b) => a.dist - b.dist);
-      const limited = flights.slice(0, 5);
+      // Sort both groups by distance
+      departures.sort((a, b) => a.dist - b.dist);
+      arrivals.sort((a, b) => a.dist - b.dist);
+
+      // Limit: max 3 departures, fill with arrivals (up to total 5)
+      const limited = [
+        ...departures.slice(0, 3),
+        ...arrivals.slice(0, 5 - Math.min(departures.length, 3))
+      ];
+
       tableBody.innerHTML = limited.length
         ? limited.map(f => f.html).join("")
-        : `<tr><td colspan="5">No active traffic near EGKK</td></tr>`;
+        : `<tr><td colspan="5">No active departures or arrivals</td></tr>`;
     }
 
     fetchFlights();
-    setInterval(fetchFlights, 60000); // update every 60s
+    setInterval(fetchFlights, 10000); // Update every 10 seconds
   </script>
 </body>
 </html>
