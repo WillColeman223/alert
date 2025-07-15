@@ -99,18 +99,19 @@
   // Update METAR every 2 minutes
   async function updateMETAR() {
   try {
-    const res = await fetch('https://data.vatsim.net/v3/vatsim-data.json?' + Date.now());
-    const data = await res.json();
+    const res = await fetch('https://metar.vatsim.net/egkk?' + Date.now());
+    const text = await res.text();
+    const match = text.match(/\s(M?\d{2})\/(M?\d{2})\s/);
 
-    const metar = data.weather.find(w => w.icao === 'EGKK');
-
-    if (metar && typeof metar.temp !== 'undefined') {
-      el.temp.textContent = `${metar.temp}°C`;
+    if (match) {
+      const rawTemp = match[1];
+      const temp = rawTemp.startsWith('M') ? '-' + rawTemp.slice(1) : rawTemp;
+      el.temp.textContent = `${temp}°C`;
     } else {
       el.temp.textContent = '--°C';
     }
-  } catch (err) {
-    console.error('Failed to fetch METAR from VATSIM data feed', err);
+  } catch (e) {
+    console.error('Failed to fetch METAR', e);
     el.temp.textContent = '--°C';
   }
 }
