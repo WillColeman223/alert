@@ -121,15 +121,44 @@
         const status = isDeparture ? "Departure" : "Arrival";
         const rowClass = isDeparture ? "status-dep" : "status-arr";
 
-        // Time from logon or deptime
+        // --- TIME CALCULATION FIXED HERE ---
         let flightTime;
-        if (fp.deptime && /^\d{4}$/.test(fp.deptime)) {
-          const h = parseInt(fp.deptime.slice(0, 2), 10);
-          const m = parseInt(fp.deptime.slice(2), 10);
-          flightTime = new Date();
-          flightTime.setUTCHours(h, m, 0, 0);
+
+        if (isDeparture) {
+          // Use planned departure time
+          if (fp.deptime && /^\d{4}$/.test(fp.deptime)) {
+            const h = parseInt(fp.deptime.slice(0, 2), 10);
+            const m = parseInt(fp.deptime.slice(2), 10);
+            flightTime = new Date();
+            flightTime.setUTCHours(h, m, 0, 0);
+          } else {
+            flightTime = new Date(pilot.logon_time + "Z");
+          }
+
         } else {
-          flightTime = new Date(pilot.logon_time + "Z");
+          // ARRIVAL → ETA = departure time + enroute time
+          if (
+            fp.deptime &&
+            /^\d{4}$/.test(fp.deptime) &&
+            fp.enroute_time &&
+            /^\d{2}:\d{2}$/.test(fp.enroute_time)
+          ) {
+            const depH = parseInt(fp.deptime.slice(0, 2), 10);
+            const depM = parseInt(fp.deptime.slice(2), 10);
+
+            const enH = parseInt(fp.enroute_time.slice(0, 2), 10);
+            const enM = parseInt(fp.enroute_time.slice(3), 10);
+
+            flightTime = new Date();
+            flightTime.setUTCHours(depH, depM, 0, 0);
+
+            // Add enroute time
+            flightTime.setUTCHours(flightTime.getUTCHours() + enH);
+            flightTime.setUTCMinutes(flightTime.getUTCMinutes() + enM);
+          } else {
+            // Fallback: now (rare)
+            flightTime = new Date();
+          }
         }
 
         const localTime = flightTime.toLocaleTimeString([], {
@@ -151,11 +180,11 @@
         if (isArrival) arrivals.push(record);
       }
 
-      // Sort both groups by distance
+      // Sort by distance
       departures.sort((a, b) => a.dist - b.dist);
       arrivals.sort((a, b) => a.dist - b.dist);
 
-      // Limit: max 3 departures, fill with arrivals (up to total 5)
+      // Max 3 departures, fill remainder with arrivals (max total 5)
       const limited = [
         ...departures.slice(0, 3),
         ...arrivals.slice(0, 5 - Math.min(departures.length, 3))
@@ -171,4 +200,5 @@
   </script>
 </body>
 </html>
+
 
