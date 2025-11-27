@@ -2,80 +2,186 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Manchester Info Bar – Fast Refresh + Persistent Last Flight</title>
+  <title>Manchester Info Bars – Runway 23R/05L (top) & 23L/05R (bottom)</title>
+  <!-- Font Awesome Free CDN -->
   <link
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
   />
   <style>
-    body {
-      margin: 0;
-      background: #00FF00;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    :root{
+      --bg:#00FF00; /* chroma key green */
+      --bar-bg:#1e2a38;
+      --bar-color:#ffffff;
+      --gap:8px;
+      --pad:14px;
+      --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      --cell-border: rgba(255,255,255,0.12);
     }
-    .infobar {
+
+    html,body{height:100%;margin:0;background:var(--bg);font-family:var(--font);}
+
+    /* wrapper fixed to bottom, holds two stacked bars */
+    .infowrapper {
       position: fixed;
-      bottom: 0;
       left: 0;
       right: 0;
+      bottom: 0;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #1e2a38;
-      color: #ffffff;
-      padding: 20px 24px;
-      font-size: 1.4rem;
-    }
-    .cell {
-      flex: 1;
-      text-align: center;
-      border-left: 1px solid rgba(255, 255, 255, 0.2);
-      padding: 4px 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-direction: column;
       gap: 6px;
+      padding: 12px;
+      pointer-events: none; /* allow clicks through if desired; cells can be enabled individually */
+      z-index: 9999;
     }
-    .cell:first-child {
-      border-left: none;
-      text-align: left;
-      font-weight: bold;
-      justify-content: flex-start;
+
+    .infobar {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: var(--gap);
+      background: var(--bar-bg);
+      color: var(--bar-color);
+      padding: var(--pad);
+      border-radius: 8px;
+      font-size: 1.15rem;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+      min-width: 980px;
+      max-width: calc(100% - 48px);
+      margin: 0 auto;
     }
-    .cell i {
-      font-size: 1.2rem;
+
+    .infobar .left {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:700;
+      min-width: 220px;
+    }
+
+    .cells {
+      display: flex;
+      flex: 1;
+      gap: 6px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .cell {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 12px;
+      min-width: 120px;
+      justify-content: center;
+      border-left: 1px solid var(--cell-border);
+      white-space: nowrap;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.01);
+    }
+
+    .cell:first-child { border-left: none; }
+
+    .cell i { font-size: 1rem; }
+
+    /* smaller text for secondary items */
+    .muted { opacity: 0.9; font-weight:600; font-size:0.98rem; }
+
+    /* responsive tweaks */
+    @media (max-width:1100px) {
+      .infobar { font-size: 1rem; min-width:760px; }
+      .infobar .left { min-width:180px; }
+      .cell { min-width: 90px; padding:6px 8px; }
+    }
+    @media (max-width:760px) {
+      .infobar { font-size: 0.92rem; min-width: auto; padding:10px; }
+      .cells { gap:4px; }
+      .cell { padding:6px 6px; }
     }
   </style>
 </head>
 <body>
-  <div class="infobar">
-    <div class="cell" id="airport"><i class="fas fa-location-dot"></i> <span>EGCC</span></div>
-    <div class="cell" id="time"><i class="fas fa-clock"></i> <span>--:--</span></div>
-    <div class="cell" id="temp"><i class="fas fa-temperature-high"></i> <span>--°C</span></div>
-    <div class="cell" id="callsign"><i class="fas fa-plane"></i> <span>Loading...</span></div>
-    <div class="cell" id="aircraft"><i class="fas fa-fighter-jet"></i> <span>--</span></div>
-    <div class="cell" id="pilot"><i class="fas fa-user"></i> <span>--</span></div>
-    <div class="cell" id="route"><i class="fas fa-route"></i> <span>-- ➔ --</span></div>
+  <div class="infowrapper">
+
+    <!-- TOP: Runway 23R/05L (T1 chosen: top row = 23R) -->
+    <div class="infobar" id="bar-23R">
+      <div class="left">
+        <i class="fas fa-location-dot"></i>
+        <div>
+          <div style="font-size:1rem">EGCC</div>
+          <div class="muted" style="font-size:0.85rem">Runway 23R / 05L</div>
+        </div>
+      </div>
+
+      <div class="cells">
+        <div class="cell" id="r23r-callsign"><i class="fas fa-plane"></i> <span>Loading...</span></div>
+        <div class="cell" id="r23r-aircraft"><i class="fas fa-fighter-jet"></i> <span>--</span></div>
+        <div class="cell" id="r23r-pilot"><i class="fas fa-user"></i> <span>--</span></div>
+        <div class="cell" id="r23r-route"><i class="fas fa-route"></i> <span>-- ➔ --</span></div>
+        <div class="cell" id="r23r-time"><i class="fas fa-clock"></i> <span>--:--</span></div>
+        <div class="cell" id="r23r-temp"><i class="fas fa-temperature-high"></i> <span>--°C</span></div>
+      </div>
+    </div>
+
+    <!-- BOTTOM: Runway 23L/05R -->
+    <div class="infobar" id="bar-23L">
+      <div class="left">
+        <i class="fas fa-location-dot"></i>
+        <div>
+          <div style="font-size:1rem">EGCC</div>
+          <div class="muted" style="font-size:0.85rem">Runway 23L / 05R</div>
+        </div>
+      </div>
+
+      <div class="cells">
+        <div class="cell" id="r23l-callsign"><i class="fas fa-plane"></i> <span>Loading...</span></div>
+        <div class="cell" id="r23l-aircraft"><i class="fas fa-fighter-jet"></i> <span>--</span></div>
+        <div class="cell" id="r23l-pilot"><i class="fas fa-user"></i> <span>--</span></div>
+        <div class="cell" id="r23l-route"><i class="fas fa-route"></i> <span>-- ➔ --</span></div>
+        <div class="cell" id="r23l-time"><i class="fas fa-clock"></i> <span>--:--</span></div>
+        <div class="cell" id="r23l-temp"><i class="fas fa-temperature-high"></i> <span>--°C</span></div>
+      </div>
+    </div>
+
   </div>
 
   <script>
-    const el = {
-      time: document.getElementById('time'),
-      temp: document.getElementById('temp'),
-      callsign: document.getElementById('callsign'),
-      aircraft: document.getElementById('aircraft'),
-      pilot: document.getElementById('pilot'),
-      route: document.getElementById('route')
+    // Element shortcuts
+    const r23r = {
+      callsign: document.getElementById('r23r-callsign').querySelector('span'),
+      aircraft: document.getElementById('r23r-aircraft').querySelector('span'),
+      pilot: document.getElementById('r23r-pilot').querySelector('span'),
+      route: document.getElementById('r23r-route').querySelector('span'),
+      time: document.getElementById('r23r-time').querySelector('span'),
+      temp: document.getElementById('r23r-temp').querySelector('span')
+    };
+    const r23l = {
+      callsign: document.getElementById('r23l-callsign').querySelector('span'),
+      aircraft: document.getElementById('r23l-aircraft').querySelector('span'),
+      pilot: document.getElementById('r23l-pilot').querySelector('span'),
+      route: document.getElementById('r23l-route').querySelector('span'),
+      time: document.getElementById('r23l-time').querySelector('span'),
+      temp: document.getElementById('r23l-temp').querySelector('span')
     };
 
-    /* Manchester (EGCC) Runway 23R/05L Polygon */
-    const runway = [
+    // Runway polygons (approximate footprints around Manchester runway thresholds)
+    // Top row: 23R / 05L polygon
+    const runway23R = [
       { lat: 53.35345, lon: -2.28343 },
       { lat: 53.34610, lon: -2.30549 },
       { lat: 53.34567, lon: -2.30488 },
       { lat: 53.35310, lon: -2.28269 }
     ];
 
+    // Bottom row: 23L / 05R polygon
+    const runway23L = [
+      { lat: 53.35910, lon: -2.27980 },
+      { lat: 53.35580, lon: -2.28960 },
+      { lat: 53.35530, lon: -2.28910 },
+      { lat: 53.35880, lon: -2.27890 }
+    ];
+
+    // Manchester centre (used for distance calcs)
     const MAN_LAT = 53.3537, MAN_LON = -2.2750, R = 6371;
 
     function toRad(d) { return d * Math.PI / 180; }
@@ -85,6 +191,8 @@
                 Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
+
+    // Point in polygon (ray-casting)
     function pip(pt, poly) {
       let inside = false;
       for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -97,91 +205,143 @@
       return inside;
     }
 
-    let lastFlight = {
-      callsign: 'Waiting...',
-      aircraft: '--',
-      pilot: '--',
-      route: '-- ➔ --'
-    };
+    // Persistent last-known flights per runway
+    let lastR23R = { callsign: 'Waiting...', aircraft: '--', pilot: '--', route: '-- ➔ --' };
+    let lastR23L = { callsign: 'Waiting...', aircraft: '--', pilot: '--', route: '-- ➔ --' };
 
-    // Update time every second
-    setInterval(() => {
+    // Update the same clock on both bars
+    function updateClocks() {
       const now = new Date();
-      el.time.querySelector('span').textContent = now.toLocaleTimeString('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }, 1000);
+      const t = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      r23r.time.textContent = t;
+      r23l.time.textContent = t;
+    }
+    updateClocks();
+    setInterval(updateClocks, 1000);
 
-    // Update METAR every 2 minutes
+    // METAR update (shared for both bars; shows same temp)
     async function updateMETAR() {
       try {
         const res = await fetch('https://metar.vatsim.net/egcc?' + Date.now());
         const text = await res.text();
         const match = text.match(/\s(M?\d{2})\/(M?\d{2})\s/);
-
+        let tempDisplay = '--°C';
         if (match) {
           const rawTemp = match[1];
           const temp = rawTemp.startsWith('M') ? '-' + rawTemp.slice(1) : rawTemp;
-          el.temp.querySelector('span').textContent = `${temp}°C`;
-        } else {
-          el.temp.querySelector('span').textContent = '--°C';
+          tempDisplay = `${temp}°C`;
         }
+        r23r.temp.textContent = tempDisplay;
+        r23l.temp.textContent = tempDisplay;
       } catch (e) {
         console.error('Failed to fetch METAR', e);
-        el.temp.querySelector('span').textContent = '--°C';
+        r23r.temp.textContent = '--°C';
+        r23l.temp.textContent = '--°C';
       }
     }
     updateMETAR();
     setInterval(updateMETAR, 120000);
 
-    // Update VATSIM every 3 seconds
+    // Main VATSIM polling and runway detection
     async function updateFlights() {
       try {
         const url = 'https://data.vatsim.net/v3/vatsim-data.json?' + Date.now();
         const data = await fetch(url).then(r => r.json());
-        const flights = data.pilots.filter(p => {
+
+        // Filter pilots with flight plans related to EGCC (arrival OR departure)
+        const pilots = data.pilots.filter(p => {
           const fp = p.flight_plan;
           return fp && (fp.arrival === 'EGCC' || fp.departure === 'EGCC') && typeof p.latitude === 'number';
         });
 
-        flights.forEach(f => f.d = hav(MAN_LAT, MAN_LON, f.latitude, f.longitude));
+        // Compute distance from Manchester for sorting
+        pilots.forEach(p => p.d = hav(MAN_LAT, MAN_LON, p.latitude, p.longitude));
 
-        const runwayFlights = flights.filter(f =>
-          pip({ lat: f.latitude, lon: f.longitude }, runway)
-        );
+        // Determine flights inside each runway polygon (or very close to it)
+        const on23R = pilots.filter(p => pip({ lat: p.latitude, lon: p.longitude }, runway23R) || p.d < 0.8);
+        const on23L = pilots.filter(p => pip({ lat: p.latitude, lon: p.longitude }, runway23L) || p.d < 0.8);
 
-        if (runwayFlights.length) {
-          const p = runwayFlights[0];
-          const fp = p.flight_plan;
-          const details = {
-            callsign: p.callsign,
-            aircraft: fp.aircraft.split(/[\/\s]/)[0],
-            pilot: p.name || '--',
-            route: fp.arrival === 'EGCC' ? `${fp.departure} ➔ EGCC` : `EGCC ➔ ${fp.arrival}`
-          };
-          lastFlight = details;
-          el.callsign.querySelector('span').textContent = details.callsign;
-          el.aircraft.querySelector('span').textContent = details.aircraft;
-          el.pilot.querySelector('span').textContent = details.pilot;
-          el.route.querySelector('span').textContent = details.route;
-        } else {
-          el.callsign.querySelector('span').textContent = lastFlight.callsign;
-          el.aircraft.querySelector('span').textContent = lastFlight.aircraft;
-          el.pilot.querySelector('span').textContent = lastFlight.pilot;
-          el.route.querySelector('span').textContent = lastFlight.route;
+        // Helper to extract display details from pilot obj
+        function detailsFromPilot(p) {
+          const fp = p.flight_plan || {};
+          const callsign = p.callsign || (fp.callsign || 'N/A');
+          let aircraft = '--';
+          if (fp.aircraft) aircraft = fp.aircraft.split(/[\/\s]/)[0];
+          const pilotName = p.name || '--';
+          let route = '-- ➔ --';
+          if (fp.arrival === 'EGCC') route = `${fp.departure || '--'} ➔ EGCC`;
+          else if (fp.departure === 'EGCC') route = `EGCC ➔ ${fp.arrival || '--'}`;
+          else if (fp.departure && fp.arrival) route = `${fp.departure} ➔ ${fp.arrival}`;
+          return { callsign, aircraft, pilot: pilotName, route };
         }
+
+        // Choose best candidate per runway (closest to runway centre by hav distance)
+        function pickBest(list, runwayCenterLat, runwayCenterLon) {
+          if (!list.length) return null;
+          let best = list[0];
+          let bestD = hav(runwayCenterLat, runwayCenterLon, best.latitude, best.longitude);
+          for (let i = 1; i < list.length; i++) {
+            const p = list[i];
+            const d = hav(runwayCenterLat, runwayCenterLon, p.latitude, p.longitude);
+            if (d < bestD) { best = p; bestD = d; }
+          }
+          return best;
+        }
+
+        // Approximate centres for selection (rough)
+        const c23r = { lat: 53.3499, lon: -2.2938 };
+        const c23l = { lat: 53.3575, lon: -2.2840 };
+
+        const bestR23R = pickBest(on23R, c23r.lat, c23r.lon);
+        const bestR23L = pickBest(on23L, c23l.lat, c23l.lon);
+
+        if (bestR23R) {
+          const d = detailsFromPilot(bestR23R);
+          lastR23R = d;
+          r23r.callsign.textContent = d.callsign;
+          r23r.aircraft.textContent = d.aircraft;
+          r23r.pilot.textContent = d.pilot;
+          r23r.route.textContent = d.route;
+        } else {
+          // fallback to previous
+          r23r.callsign.textContent = lastR23R.callsign;
+          r23r.aircraft.textContent = lastR23R.aircraft;
+          r23r.pilot.textContent = lastR23R.pilot;
+          r23r.route.textContent = lastR23R.route;
+        }
+
+        if (bestR23L) {
+          const d = detailsFromPilot(bestR23L);
+          lastR23L = d;
+          r23l.callsign.textContent = d.callsign;
+          r23l.aircraft.textContent = d.aircraft;
+          r23l.pilot.textContent = d.pilot;
+          r23l.route.textContent = d.route;
+        } else {
+          r23l.callsign.textContent = lastR23L.callsign;
+          r23l.aircraft.textContent = lastR23L.aircraft;
+          r23l.pilot.textContent = lastR23L.pilot;
+          r23l.route.textContent = lastR23L.route;
+        }
+
       } catch (e) {
         console.error('Failed to fetch VATSIM data', e);
-        el.callsign.querySelector('span').textContent = lastFlight.callsign;
-        el.aircraft.querySelector('span').textContent = lastFlight.aircraft;
-        el.pilot.querySelector('span').textContent = lastFlight.pilot;
-        el.route.querySelector('span').textContent = lastFlight.route;
+        // Keep showing last-knowns (no overwrite)
+        r23r.callsign.textContent = lastR23R.callsign;
+        r23r.aircraft.textContent = lastR23R.aircraft;
+        r23r.pilot.textContent = lastR23R.pilot;
+        r23r.route.textContent = lastR23R.route;
+
+        r23l.callsign.textContent = lastR23L.callsign;
+        r23l.aircraft.textContent = lastR23L.aircraft;
+        r23l.pilot.textContent = lastR23L.pilot;
+        r23l.route.textContent = lastR23L.route;
       }
     }
 
+    // initial fetch and intervals
     updateFlights();
-    setInterval(updateFlights, 3000);
+    setInterval(updateFlights, 3000); // every 3s
   </script>
 </body>
 </html>
