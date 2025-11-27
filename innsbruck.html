@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Innsbruck Info Bar – Fast Refresh + Persistent Last Flight</title>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  />
+  <style>
+    body { margin: 0; background: #00FF00; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .infobar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; background: #1e2a38; color: #ffffff; padding: 20px 24px; font-size: 1.4rem; }
+    .cell { flex: 1; text-align: center; border-left: 1px solid rgba(255, 255, 255, 0.2); padding: 4px 8px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .cell:first-child { border-left: none; text-align: left; font-weight: bold; justify-content: flex-start; }
+    .cell i { font-size: 1.2rem; }
+  </style>
+</head>
+<body>
+  <div class="infobar">
+    <div class="cell" id="airport"><i class="fas fa-location-dot"></i> <span>LOWI</span></div>
+    <div class="cell" id="time"><i class="fas fa-clock"></i> <span>--:--</span></div>
+    <div class="cell" id="temp"><i class="fas fa-temperature-high"></i> <span>--°C</span></div>
+    <div class="cell" id="callsign"><i class="fas fa-plane"></i> <span>Loading...</span></div>
+    <div class="cell" id="aircraft"><i class="fas fa-fighter-jet"></i> <span>--</span></div>
+    <div class="cell" id="pilot"><i class="fas fa-user"></i> <span>--</span></div>
+    <div class="cell" id="route"><i class="fas fa-route"></i> <span>-- ➔ --</span></div>
+  </div>
+
+  <script>
+    const el = {
+      time: document.getElementById('time'),
+      temp: document.getElementById('temp'),
+      callsign: document.getElementById('callsign'),
+      aircraft: document.getElementById('aircraft'),
+      pilot: document.getElementById('pilot'),
+      route: document.getElementById('route')
+    };
+
+    // Innsbruck runway polygon (approx RWY 08/26)
+    const runway = [
+      { lat: 47.2581, lon: 11.3388 },
+      { lat: 47.2559, lon: 11.3309 },
+      { lat: 47.2607, lon: 11.3251 },
+      { lat: 47.2626, lon: 11.3340 }
+    ];
+
+    const INN_LAT = 47.2602, INN_LON = 11.3439, R = 6371;
+
+    function toRad(d) { return d * Math.PI / 180; }
+    function hav(lat1, lon1, lat2, lon2) {
+      const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    function pip(pt, poly) {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i].lon, yi = poly[i].lat;
+        const xj = poly[j].lon, yj = poly[j].lat;
+        const intersect = ((yi > pt.lat) !== (yj > pt.lat)) &&
+                          (pt.lon < (xj - xi) * (pt.lat - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    let lastFlight = {
+      callsign: 'Waiting...',
+      aircraft: '--',
+      pilot: '--',
+      route: '-- ➔ --'
+    };
+
+    setInterval(() => {
+      const now = new Date();
+      el.time.querySelector('span').textContent = now.toLocaleTimeString('en-GB', {
+        hour: '2-digit', minute: '2-digit'
+      });
+    }, 1000);
+
+    async function updateMETAR() {
+      try {
+        const res = await fetch('https://metar.vatsim.net/lowi?' + Date.now());
+        const text = await res.text();
+        const match = text.match(/\s(M?\d{2})\/(M?\d{2})\s/);
+        if (match) {
+          const rawTemp = match[1];
+          const temp = rawTemp.startsWith('M') ? '-' + rawTemp.slice(1) : rawTemp;
+          el.temp.querySelector('span').textContent = `${temp}°C`;
+        } else {
+          el.temp.querySelector('span').textContent = '--°C';
+        }
+      } catch (e) {
+        el.temp.querySelector('span').textContent = '--°C';
+      }
+    }
+    updateMETAR();
+    setInterval(updateMETAR, 120000);
+
+    async function updateFlights() {
+      try {
+        const url = 'https://data.vatsim.net/v3/vatsim-data.json?' + Date.now();
+        const data = await fetch(url).then(r => r.json());
+        const flights = data.pilots.filter(p => {
+          const fp = p.flight_plan;
+          return fp && (fp.arrival === 'LOWI' || fp.departure === 'LOWI') && typeof p.latitude === 'number';
+        });
+
+        flights.forEach(f => f.d = hav(INN_LAT, INN_LON, f.latitude, f.longitude));
+        const runwayFlights = flights.filter(f => pip({ lat: f.latitude, lon: f.longitude }, runway));
+
+        if (runwayFlights.length) {
+          const p = runwayFlights[0];
+          const fp = p.flight_plan;
+          const details = {
+            callsign: p.callsign,
+            aircraft: fp.aircraft.split(/[\/\s]/)[0],
+            pilot: p.name || '--',
+            route: fp.arrival === 'LOWI' ? `${fp.departure} ➔ LOWI` : `LOWI ➔ ${fp.arrival}`
+          };
+          lastFlight = details;
+          el.callsign.querySelector('span').textContent = details.callsign;
+          el.aircraft.querySelector('span').textContent = details.aircraft;
+          el.pilot.querySelector('span').textContent = details.pilot;
+          el.route.querySelector('span').textContent = details.route;
+        } else {
+          el.callsign.querySelector('span').textContent = lastFlight.callsign;
+          el.aircraft.querySelector('span').textContent = lastFlight.aircraft;
+          el.pilot.querySelector('span').textContent = lastFlight.pilot;
+          el.route.querySelector('span').textContent = lastFlight.route;
+        }
+      } catch (e) {
+        el.callsign.querySelector('span').textContent = lastFlight.callsign;
+        el.aircraft.querySelector('span').textContent = lastFlight.aircraft;
+        el.pilot.querySelector('span').textContent = lastFlight.pilot;
+        el.route.querySelector('span').textContent = lastFlight.route;
+      }
+    }
+
+    updateFlights();
+    setInterval(updateFlights, 3000);
+  </script>
+</body>
+</html>
