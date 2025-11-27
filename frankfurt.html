@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Frankfurt Info Bars – 25C/07C (top), 25L/07R (middle), 25R/07L (bottom)</title>
+  <!-- Font Awesome Free CDN -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  />
+  <style>
+    :root{
+      --bg:#00FF00; /* chroma key green */
+      --bar-bg:#1e2a38;
+      --bar-color:#ffffff;
+      --gap:8px;
+      --pad:14px;
+      --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      --cell-border: rgba(255,255,255,0.12);
+    }
+
+    html,body{height:100%;margin:0;background:var(--bg);font-family:var(--font);}
+
+    /* wrapper fixed to bottom, holds three stacked bars; no gap between bars */
+    .infowrapper {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0; /* NO GAP as requested */
+      padding: 12px;
+      pointer-events: none; /* allow clicks through if desired; cells can be enabled individually */
+      z-index: 9999;
+    }
+
+    .infobar {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: var(--gap);
+      background: var(--bar-bg);
+      color: var(--bar-color);
+      padding: var(--pad);
+      border-radius: 8px;
+      font-size: 1.15rem;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+      min-width: 980px;
+      max-width: calc(100% - 48px);
+      margin: 0 auto;
+    }
+
+    .infobar .left {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:700;
+      min-width: 220px;
+    }
+
+    .cells {
+      display: flex;
+      flex: 1;
+      gap: 6px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .cell {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 12px;
+      min-width: 120px;
+      justify-content: center;
+      border-left: 1px solid var(--cell-border);
+      white-space: nowrap;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.01);
+    }
+
+    .cell:first-child { border-left: none; }
+
+    .cell i { font-size: 1rem; }
+
+    /* smaller text for secondary items */
+    .muted { opacity: 0.9; font-weight:600; font-size:0.98rem; }
+
+    /* responsive tweaks */
+    @media (max-width:1100px) {
+      .infobar { font-size: 1rem; min-width:760px; }
+      .infobar .left { min-width:180px; }
+      .cell { min-width: 90px; padding:6px 8px; }
+    }
+    @media (max-width:760px) {
+      .infobar { font-size: 0.92rem; min-width: auto; padding:10px; }
+      .cells { gap:4px; }
+      .cell { padding:6px 6px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="infowrapper">
+
+    <!-- TOP: 25C / 07C (center runway) -->
+    <div class="infobar" id="bar-25C">
+      <div class="left">
+        <i class="fas fa-location-dot"></i>
+        <div>
+          <div style="font-size:1rem">EDDF</div>
+          <div class="muted" style="font-size:0.85rem">Runway 25C / 07C</div>
+        </div>
+      </div>
+
+      <div class="cells">
+        <div class="cell" id="r25c-callsign"><i class="fas fa-plane"></i> <span>Loading...</span></div>
+        <div class="cell" id="r25c-aircraft"><i class="fas fa-fighter-jet"></i> <span>--</span></div>
+        <div class="cell" id="r25c-pilot"><i class="fas fa-user"></i> <span>--</span></div>
+        <div class="cell" id="r25c-route"><i class="fas fa-route"></i> <span>-- ➔ --</span></div>
+        <div class="cell" id="r25c-time"><i class="fas fa-clock"></i> <span>--:--</span></div>
+        <div class="cell" id="r25c-temp"><i class="fas fa-temperature-high"></i> <span>--°C</span></div>
+      </div>
+    </div>
+
+    <!-- MIDDLE: 25L / 07R (southern parallel) -->
+    <div class="infobar" id="bar-25L">
+      <div class="left">
+        <i class="fas fa-location-dot"></i>
+        <div>
+          <div style="font-size:1rem">EDDF</div>
+          <div class="muted" style="font-size:0.85rem">Runway 25L / 07R</div>
+        </div>
+      </div>
+
+      <div class="cells">
+        <div class="cell" id="r25l-callsign"><i class="fas fa-plane"></i> <span>Loading...</span></div>
+        <div class="cell" id="r25l-aircraft"><i class="fas fa-fighter-jet"></i> <span>--</span></div>
+        <div class="cell" id="r25l-pilot"><i class="fas fa-user"></i> <span>--</span></div>
+        <div class="cell" id="r25l-route"><i class="fas fa-route"></i> <span>-- ➔ --</span></div>
+        <div class="cell" id="r25l-time"><i class="fas fa-clock"></i> <span>--:--</span></div>
+        <div class="cell" id="r25l-temp"><i class="fas fa-temperature-high"></i> <span>--°C</span></div>
+      </div>
+    </div>
+
+    <!-- BOTTOM: 25R / 07L (northern parallel) -->
+    <div class="infobar" id="bar-25R">
+      <div class="left">
+        <i class="fas fa-location-dot"></i>
+        <div>
+          <div style="font-size:1rem">EDDF</div>
+          <div class="muted" style="font-size:0.85rem">Runway 25R / 07L</div>
+        </div>
+      </div>
+
+      <div class="cells">
+        <div class="cell" id="r25r-callsign"><i class="fas fa-plane"></i> <span>Loading...</span></div>
+        <div class="cell" id="r25r-aircraft"><i class="fas fa-fighter-jet"></i> <span>--</span></div>
+        <div class="cell" id="r25r-pilot"><i class="fas fa-user"></i> <span>--</span></div>
+        <div class="cell" id="r25r-route"><i class="fas fa-route"></i> <span>-- ➔ --</span></div>
+        <div class="cell" id="r25r-time"><i class="fas fa-clock"></i> <span>--:--</span></div>
+        <div class="cell" id="r25r-temp"><i class="fas fa-temperature-high"></i> <span>--°C</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Element shortcuts
+    const r25c = {
+      callsign: document.getElementById('r25c-callsign').querySelector('span'),
+      aircraft: document.getElementById('r25c-aircraft').querySelector('span'),
+      pilot: document.getElementById('r25c-pilot').querySelector('span'),
+      route: document.getElementById('r25c-route').querySelector('span'),
+      time: document.getElementById('r25c-time').querySelector('span'),
+      temp: document.getElementById('r25c-temp').querySelector('span')
+    };
+    const r25l = {
+      callsign: document.getElementById('r25l-callsign').querySelector('span'),
+      aircraft: document.getElementById('r25l-aircraft').querySelector('span'),
+      pilot: document.getElementById('r25l-pilot').querySelector('span'),
+      route: document.getElementById('r25l-route').querySelector('span'),
+      time: document.getElementById('r25l-time').querySelector('span'),
+      temp: document.getElementById('r25l-temp').querySelector('span')
+    };
+    const r25r = {
+      callsign: document.getElementById('r25r-callsign').querySelector('span'),
+      aircraft: document.getElementById('r25r-aircraft').querySelector('span'),
+      pilot: document.getElementById('r25r-pilot').querySelector('span'),
+      route: document.getElementById('r25r-route').querySelector('span'),
+      time: document.getElementById('r25r-time').querySelector('span'),
+      temp: document.getElementById('r25r-temp').querySelector('span')
+    };
+
+    // Runway polygons (approximate footprints around EDDF runway thresholds)
+    // Coordinates are { lat, lon } for polygon checks and proximity
+    // 25C / 07C - central runway polygon (approx)
+    const runway25C = [
+      { lat: 50.04200, lon: 8.55920 },
+      { lat: 50.03640, lon: 8.57060 },
+      { lat: 50.03590, lon: 8.57020 },
+      { lat: 50.04170, lon: 8.55880 }
+    ];
+
+    // 25L / 07R - southern parallel (approx)
+    const runway25L = [
+      { lat: 50.03910, lon: 8.55440 },
+      { lat: 50.03380, lon: 8.56580 },
+      { lat: 50.03330, lon: 8.56540 },
+      { lat: 50.03880, lon: 8.55390 }
+    ];
+
+    // 25R / 07L - northern parallel (approx)
+    const runway25R = [
+      { lat: 50.04410, lon: 8.56340 },
+      { lat: 50.03850, lon: 8.57480 },
+      { lat: 50.03800, lon: 8.57440 },
+      { lat: 50.04360, lon: 8.56300 }
+    ];
+
+    // Frankfurt centre (used for distance calcs)
+    const EDDF_LAT = 50.0379, EDDF_LON = 8.5622, R = 6371;
+
+    function toRad(d) { return d * Math.PI / 180; }
+    function hav(lat1, lon1, lat2, lon2) {
+      const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    // Point in polygon (ray-casting)
+    function pip(pt, poly) {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i].lon, yi = poly[i].lat;
+        const xj = poly[j].lon, yj = poly[j].lat;
+        const intersect = ((yi > pt.lat) !== (yj > pt.lat)) &&
+                          (pt.lon < (xj - xi) * (pt.lat - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    // Persistent last-known flights per runway
+    let last25C = { callsign: 'Waiting...', aircraft: '--', pilot: '--', route: '-- ➔ --' };
+    let last25L = { callsign: 'Waiting...', aircraft: '--', pilot: '--', route: '-- ➔ --' };
+    let last25R = { callsign: 'Waiting...', aircraft: '--', pilot: '--', route: '-- ➔ --' };
+
+    // Update the same clock on all bars
+    function updateClocks() {
+      const now = new Date();
+      const t = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      r25c.time.textContent = t;
+      r25l.time.textContent = t;
+      r25r.time.textContent = t;
+    }
+    updateClocks();
+    setInterval(updateClocks, 1000);
+
+    // METAR update (shared for all bars; shows same temp)
+    async function updateMETAR() {
+      try {
+        const res = await fetch('https://metar.vatsim.net/eddf?' + Date.now());
+        const text = await res.text();
+        // look for temperature/dew like " 12/08 " pattern
+        const match = text.match(/\s(M?\d{2})\/(M?\d{2})\s/);
+        let tempDisplay = '--°C';
+        if (match) {
+          const rawTemp = match[1];
+          const temp = rawTemp.startsWith('M') ? '-' + rawTemp.slice(1) : rawTemp;
+          tempDisplay = `${temp}°C`;
+        }
+        r25c.temp.textContent = tempDisplay;
+        r25l.temp.textContent = tempDisplay;
+        r25r.temp.textContent = tempDisplay;
+      } catch (e) {
+        console.error('Failed to fetch METAR', e);
+        r25c.temp.textContent = '--°C';
+        r25l.temp.textContent = '--°C';
+        r25r.temp.textContent = '--°C';
+      }
+    }
+    updateMETAR();
+    setInterval(updateMETAR, 120000);
+
+    // Main VATSIM polling and runway detection
+    async function updateFlights() {
+      try {
+        const url = 'https://data.vatsim.net/v3/vatsim-data.json?' + Date.now();
+        const data = await fetch(url).then(r => r.json());
+
+        // Filter pilots with flight plans related to EDDF (arrival OR departure)
+        const pilots = data.pilots.filter(p => {
+          const fp = p.flight_plan;
+          return fp && (fp.arrival === 'EDDF' || fp.departure === 'EDDF') && typeof p.latitude === 'number';
+        });
+
+        // Compute distance from Frankfurt for sorting
+        pilots.forEach(p => p.d = hav(EDDF_LAT, EDDF_LON, p.latitude, p.longitude));
+
+        // Determine flights inside each runway polygon (or very close to it)
+        const on25C = pilots.filter(p => pip({ lat: p.latitude, lon: p.longitude }, runway25C) || p.d < 1.0);
+        const on25L = pilots.filter(p => pip({ lat: p.latitude, lon: p.longitude }, runway25L) || p.d < 1.0);
+        const on25R = pilots.filter(p => pip({ lat: p.latitude, lon: p.longitude }, runway25R) || p.d < 1.0);
+
+        // Helper to extract display details from pilot obj
+        function detailsFromPilot(p) {
+          const fp = p.flight_plan || {};
+          const callsign = p.callsign || (fp.callsign || 'N/A');
+          let aircraft = '--';
+          if (fp.aircraft) aircraft = fp.aircraft.split(/[\/\s]/)[0];
+          const pilotName = p.name || '--';
+          let route = '-- ➔ --';
+          if (fp.arrival === 'EDDF') route = `${fp.departure || '--'} ➔ EDDF`;
+          else if (fp.departure === 'EDDF') route = `EDDF ➔ ${fp.arrival || '--'}`;
+          else if (fp.departure && fp.arrival) route = `${fp.departure} ➔ ${fp.arrival}`;
+          return { callsign, aircraft, pilot: pilotName, route };
+        }
+
+        // Choose best candidate per runway (closest to runway centre by hav distance)
+        function pickBest(list, runwayCenterLat, runwayCenterLon) {
+          if (!list.length) return null;
+          let best = list[0];
+          let bestD = hav(runwayCenterLat, runwayCenterLon, best.latitude, best.longitude);
+          for (let i = 1; i < list.length; i++) {
+            const p = list[i];
+            const d = hav(runwayCenterLat, runwayCenterLon, p.latitude, p.longitude);
+            if (d < bestD) { best = p; bestD = d; }
+          }
+          return best;
+        }
+
+        // Approximate centres for selection (rough)
+        const c25c = { lat: 50.0399, lon: 8.5640 }; // central
+        const c25l = { lat: 50.0365, lon: 8.5590 }; // southern
+        const c25r = { lat: 50.0425, lon: 8.5685 }; // northern
+
+        const best25C = pickBest(on25C, c25c.lat, c25c.lon);
+        const best25L = pickBest(on25L, c25l.lat, c25l.lon);
+        const best25R = pickBest(on25R, c25r.lat, c25r.lon);
+
+        if (best25C) {
+          const d = detailsFromPilot(best25C);
+          last25C = d;
+          r25c.callsign.textContent = d.callsign;
+          r25c.aircraft.textContent = d.aircraft;
+          r25c.pilot.textContent = d.pilot;
+          r25c.route.textContent = d.route;
+        } else {
+          // fallback to previous
+          r25c.callsign.textContent = last25C.callsign;
+          r25c.aircraft.textContent = last25C.aircraft;
+          r25c.pilot.textContent = last25C.pilot;
+          r25c.route.textContent = last25C.route;
+        }
+
+        if (best25L) {
+          const d = detailsFromPilot(best25L);
+          last25L = d;
+          r25l.callsign.textContent = d.callsign;
+          r25l.aircraft.textContent = d.aircraft;
+          r25l.pilot.textContent = d.pilot;
+          r25l.route.textContent = d.route;
+        } else {
+          r25l.callsign.textContent = last25L.callsign;
+          r25l.aircraft.textContent = last25L.aircraft;
+          r25l.pilot.textContent = last25L.pilot;
+          r25l.route.textContent = last25L.route;
+        }
+
+        if (best25R) {
+          const d = detailsFromPilot(best25R);
+          last25R = d;
+          r25r.callsign.textContent = d.callsign;
+          r25r.aircraft.textContent = d.aircraft;
+          r25r.pilot.textContent = d.pilot;
+          r25r.route.textContent = d.route;
+        } else {
+          r25r.callsign.textContent = last25R.callsign;
+          r25r.aircraft.textContent = last25R.aircraft;
+          r25r.pilot.textContent = last25R.pilot;
+          r25r.route.textContent = last25R.route;
+        }
+
+      } catch (e) {
+        console.error('Failed to fetch VATSIM data', e);
+        // Keep showing last-knowns (no overwrite)
+        r25c.callsign.textContent = last25C.callsign;
+        r25c.aircraft.textContent = last25C.aircraft;
+        r25c.pilot.textContent = last25C.pilot;
+        r25c.route.textContent = last25C.route;
+
+        r25l.callsign.textContent = last25L.callsign;
+        r25l.aircraft.textContent = last25L.aircraft;
+        r25l.pilot.textContent = last25L.pilot;
+        r25l.route.textContent = last25L.route;
+
+        r25r.callsign.textContent = last25R.callsign;
+        r25r.aircraft.textContent = last25R.aircraft;
+        r25r.pilot.textContent = last25R.pilot;
+        r25r.route.textContent = last25R.route;
+      }
+    }
+
+    // initial fetch and intervals
+    updateFlights();
+    setInterval(updateFlights, 3000); // every 3s
+  </script>
+</body>
+</html>
