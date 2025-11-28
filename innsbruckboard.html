@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Innsbruck Live Radar & Advanced A/D Panel</title>
+
+<style>
+    body{
+        margin:0;
+        background:#0b1118;
+        font-family: "Segoe UI", Arial, sans-serif;
+        color:white;
+        overflow:hidden;
+    }
+
+    /* Layout */
+    .wrap{
+        height:100vh;
+        width:100vw;
+        display:flex;
+        justify-content:flex-start;
+        align-items:center;      /* centers panel vertically */
+        gap:40px;
+        padding:20px;
+        box-sizing:border-box;
+    }
+
+    /* Left map */
+    .map{
+        flex:1;
+        height:95vh;
+        border-radius:18px;
+        overflow:hidden;
+        background:black;
+        box-shadow:0 0 25px rgba(0,0,0,0.6);
+    }
+    .map iframe{
+        width:100%;
+        height:100%;
+        border:none;
+    }
+
+    /* Right panel (advanced UI) */
+    .side{
+        width:440px;
+        height:85vh;
+        background:linear-gradient(180deg, #21303f, #1a2733);
+        border-radius:20px;
+        padding:25px;
+        box-sizing:border-box;
+        overflow-y:auto;
+        box-shadow:0 0 30px rgba(0,0,0,0.45);
+        backdrop-filter: blur(4px);
+        border:1px solid rgba(255,255,255,0.06);
+    }
+
+    h2{
+        text-align:center;
+        margin:0 0 25px 0;
+        font-weight:700;
+        font-size:1.35em;
+        letter-spacing:1px;
+    }
+
+    /* Each flight box */
+    .flight{
+        background:rgba(255,255,255,0.03);
+        border:1px solid rgba(255,255,255,0.06);
+        padding:18px;
+        margin-bottom:18px;
+        border-radius:16px;
+        box-shadow:0 0 10px rgba(0,0,0,0.25);
+        transition:0.2s ease;
+    }
+    .flight:hover{
+        transform:scale(1.02);
+        box-shadow:0 0 18px rgba(0,0,0,0.45);
+    }
+
+    /* Callsign + badge */
+    .header-row{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:8px;
+    }
+    .callsign{
+        font-size:1.3em;
+        font-weight:700;
+    }
+
+    /* ARR / DEP badge */
+    .badge{
+        padding:5px 12px;
+        border-radius:12px;
+        font-size:0.75em;
+        letter-spacing:0.5px;
+        font-weight:600;
+    }
+
+    /* Colours */
+    .arr{
+        color:#ff9c47;
+        text-shadow:0 0 6px rgba(255,130,28,0.6);
+    }
+    .dep{
+        color:#5FFF5F;
+        text-shadow:0 0 6px rgba(50,255,50,0.6);
+    }
+
+    .badge-arr{
+        background:rgba(255,138,56,0.15);
+        border:1px solid rgba(255,138,56,0.4);
+        color:#ffb36c;
+    }
+    .badge-dep{
+        background:rgba(60,255,60,0.15);
+        border:1px solid rgba(60,255,60,0.4);
+        color:#9aff9a;
+    }
+
+    .details{
+        font-size:0.95em;
+        opacity:0.9;
+        line-height:1.45em;
+        margin-top:6px;
+    }
+
+    .time-remaining{
+        margin-top:8px;
+        font-size:0.95em;
+        opacity:0.85;
+    }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+    <!-- MAP -->
+    <div class="map">
+        <iframe src="https://vatsim-radar.com/?center=12.32028,46.74727&zoom=7.38"></iframe>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="side" id="panel">
+        <h2>Innsbruck Live Arrivals & Departures</h2>
+    </div>
+
+</div>
+
+<script>
+/* SAMPLE DATA (I can make it live later) */
+const flights = [
+    { callsign:"EZY45TN", type:"A320", from:"LGW", to:"INN", alt:"28000ft", gs:"430kts", status:"arrival", eta:"2025-11-28T10:15:00" },
+    { callsign:"BA8736",  type:"A319", from:"INN", to:"LHR", alt:"0ft", gs:"0kts", status:"departure", eta:"2025-11-28T10:40:00" },
+    { callsign:"DLH5LX",  type:"E190", from:"MUC", to:"INN", alt:"19000ft", gs:"380kts", status:"arrival", eta:"2025-11-28T11:05:00" },
+    { callsign:"TUI23R",  type:"B738", from:"INN", to:"BHX", alt:"0ft", gs:"0kts", status:"departure", eta:"2025-11-28T11:30:00" }
+];
+
+/* Time remaining formatter */
+function timeUntil(target){
+    let now = new Date();
+    let t = new Date(target);
+    let diff = t - now;
+
+    if(diff < 0) return "Now";
+
+    let mins = Math.floor(diff/1000/60);
+    let hrs  = Math.floor(mins/60);
+    mins = mins % 60;
+
+    if(hrs > 0) return `${hrs}h ${mins}m`;
+    return `${mins} minutes`;
+}
+
+/* Render flights */
+function renderFlights(){
+    const panel = document.getElementById("panel");
+
+    flights.forEach(f => {
+        let colour = f.status === "arrival" ? "arr" : "dep";
+        let badge  = f.status === "arrival" ? "badge-arr" : "badge-dep";
+        let label  = f.status === "arrival" ? "ARRIVAL" : "DEPARTURE";
+
+        let box = document.createElement("div");
+        box.className = "flight";
+
+        box.innerHTML = `
+            <div class="header-row">
+                <span class="callsign ${colour}">${f.callsign}</span>
+                <span class="badge ${badge}">${label}</span>
+            </div>
+
+            <div class="details">
+                Aircraft: <b>${f.type}</b><br>
+                Route: <b>${f.from}</b> → <b>${f.to}</b><br>
+                Altitude: <b>${f.alt}</b><br>
+                Ground Speed: <b>${f.gs}</b>
+            </div>
+
+            <div class="time-remaining">ETA: ${timeUntil(f.eta)}</div>
+        `;
+
+        panel.appendChild(box);
+    });
+}
+
+renderFlights();
+</script>
+
+</body>
+</html>
